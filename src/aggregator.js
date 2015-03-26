@@ -1,7 +1,9 @@
 module.exports = function() {
-  var columnTypes = [];
-  var documents = [];
   var ATTR_DELIM = '.';
+  var MAPPING_PATTERN = /^\w+(\[\])?(\.\w+(\[\])?)*$/;
+  var columnTypes = [];
+  var columnOrder = [];
+  var documents = [];
   var root;
   var partTypes = {};
 
@@ -47,12 +49,14 @@ module.exports = function() {
 
   var PartType = function(segments, child) {
     var key = segments.join('.');
+    var depth = segments.length;
     var partType = partTypes[key];
     if (!partType) {
-      if (segments.length === 0) {
+      if (depth === 0) {
         partType = {
           key:key,
           root: true,
+          depth:0,
           childrenTypes: {}
         };
       } else {
@@ -62,6 +66,7 @@ module.exports = function() {
           childrenTypes: {},
           attribute: attribute.match(/[^\[]+/)[0],
           root: false,
+          depth:depth,
           leaf: !child,
           multiValued: !!attribute.match(/\[\]$/),
           //      parentType: PartType(segments)
@@ -69,6 +74,7 @@ module.exports = function() {
         partType.parentType = PartType(segments, partType);
       }
       partTypes[key]=partType;
+      
     }
     if (child) {
       partType.childrenTypes[child.attribute] = child;
@@ -77,6 +83,9 @@ module.exports = function() {
   };
 
   var processHeader = function(label) {
+    if(!label.match(MAPPING_PATTERN)){
+      throw new Error("malformed column mapping: "+label);
+    }
     var segments = label.split(ATTR_DELIM);
     return PartType(segments)
   };
@@ -141,11 +150,23 @@ module.exports = function() {
   };
 
   var processRow = function(row) {
-    row.forEach(processCell);
+    columnOrder.map(function(i){
+      processCell(row[i],i);
+    });
   };
 
   var processTable = function(rows) {
     columnTypes = rows.shift().map(processHeader);
+    columnOrder = columnTypes.map(function(colType,colPos){
+      return {
+        k: 2 * colType.depth + (colType.multiValued?1:0),
+        i: colPos
+      };
+    }).sort(function(a,b){
+      return a.k-b.k;
+    }).map(function(ki){
+      return ki.i;
+    });
     detectAmbiguities();
     rows.forEach(processRow);
     commit();

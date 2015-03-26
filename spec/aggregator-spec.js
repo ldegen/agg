@@ -97,4 +97,44 @@ describe("the aggregator", function(){
     var fn = function(){aggregator.processTable(table);};
     expect(fn).to.throw(/documents must have at least one single-valued attribute/);
   });
+
+  it("it resolves 'simple' ambiguities by reordering the columns", function(){
+    var table = [
+      [ "words[]" , "id" , "foo[].bang[]" , "foo[].id"] ,
+      [ "w00t"    , 2    , "bang 1"       , "foo_1"   ] ,
+      [ "lol"     , null , "bang 1"       , "foo_2"   ] ,
+      [ "orly"    , null , "bang 2"       , null      ] ,
+      [ "tldr"    , 3    , null           , null      ]
+    ];
+    expect(aggregator.processTable(table)).to.eql([{
+        id:2,
+        foo:[
+          {bang:['bang 1'],id:'foo_1'},
+          {bang:['bang 1','bang 2'], id: 'foo_2'}
+        ],
+        words: ['w00t','lol','orly']
+      },{
+        id:3,
+        words:['tldr']
+      }
+    ]);
+  });
+
+  it("checks the lexical well-formedness of the column mappings", function(){
+    var test = function(str){
+      return function(){
+        aggregator.processTable([ [str]]);
+      };
+    };
+    expect(test("jkl-jh")).to.throw(/malformed column mapping/);
+    expect(test(".jkl")).to.throw(/malformed column mapping/);
+    expect(test("[].jkl")).to.throw(/malformed column mapping/);
+    expect(test("jkl.")).to.throw(/malformed column mapping/);
+    expect(test("jkl.[]")).to.throw(/malformed column mapping/);
+    expect(test("jkl[][]")).to.throw(/malformed column mapping/);
+    expect(test("jkl[3]")).to.throw(/malformed column mapping/);
+    expect(test("jkl[")).to.throw(/malformed column mapping/);
+    expect(test("jkl]")).to.throw(/malformed column mapping/);
+    
+  });
 });
