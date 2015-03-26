@@ -1,0 +1,4 @@
+id  , foo   , bars[].baz
+"0" , "yes" , "sicher"
+    ,       , "unsicher"
+"2" ,       , "super"

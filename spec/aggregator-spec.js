@@ -1,13 +1,10 @@
 describe("the aggregator", function(){
   var Aggregator = require("../src/aggregator");
-  var aggregator;
+  var transform = Aggregator.transformSync;
 
-  beforeEach(function(){
-    aggregator=Aggregator();
-  });
 
   it("supports simple (single-token) attributes",function(){
-     var docs = aggregator.processTable([
+     var docs = transform([
        [ "value" , "de"   , "hu"    ],
        [ 1       , "Eins" , "Egy"   ],
        [ 2       , "Zwei" , "Kettő" ],
@@ -22,7 +19,7 @@ describe("the aggregator", function(){
   });
 
   it("supports nested attributes",function(){
-     var docs = aggregator.processTable([
+     var docs = transform([
        [ "value" , "name.de" , "name.hu" ],
        [ 1       , "Eins"    , "Egy"     ],
        [ 2       , "Zwei"    , "Kettő"   ],
@@ -37,14 +34,14 @@ describe("the aggregator", function(){
   });
 
   it("supports multi-valued leaf attributes",function(){
-     var docs = aggregator.processTable([
+     var docs = transform([
        [ "value"   , "names[]" ],
        [ 1         , "Eins"    ],
        [ undefined , "Egy"     ],
        [ 2         , "Zwei"    ],
        [ null      , "Kettő"   ],
        [ 3         , "Drei"    ],
-       [ undefined , "Három"   ]
+       [ ""        , "Három"   ]
      ]);
 
      expect(docs).to.eql([
@@ -55,7 +52,7 @@ describe("the aggregator", function(){
   });
 
   it("supports multi-valued parts",function(){
-     var docs = aggregator.processTable([
+     var docs = transform([
        [ "value"   , "names[].lang" , "names[].string" ] ,
        [ 1         , "de"           , "Eins"           ] ,
        [ undefined , "hu"           , "Egy"            ] ,
@@ -81,7 +78,7 @@ describe("the aggregator", function(){
       [ null        , "r1c1"            ]
     ];
 
-    var fn = function(){aggregator.processTable(table);};
+    var fn = function(){transform(table);};
     expect(fn).to.throw(/'rows\[\]' must have at least one single-valued attribute/);
   });
 
@@ -94,11 +91,11 @@ describe("the aggregator", function(){
       [ "tldr"   ]
     ];
 
-    var fn = function(){aggregator.processTable(table);};
+    var fn = function(){transform(table);};
     expect(fn).to.throw(/documents must have at least one single-valued attribute/);
   });
 
-  it("it resolves 'simple' ambiguities by reordering the columns", function(){
+  it("resolves 'simple' ambiguities by reordering the columns", function(){
     var table = [
       [ "words[]" , "id" , "foo[].bang[]" , "foo[].id"] ,
       [ "w00t"    , 2    , "bang 1"       , "foo_1"   ] ,
@@ -106,7 +103,7 @@ describe("the aggregator", function(){
       [ "orly"    , null , "bang 2"       , null      ] ,
       [ "tldr"    , 3    , null           , null      ]
     ];
-    expect(aggregator.processTable(table)).to.eql([{
+    expect(transform(table)).to.eql([{
         id:2,
         foo:[
           {bang:['bang 1'],id:'foo_1'},
@@ -123,7 +120,7 @@ describe("the aggregator", function(){
   it("checks the lexical well-formedness of the column mappings", function(){
     var test = function(str){
       return function(){
-        aggregator.processTable([ [str]]);
+        transform([ [str]]);
       };
     };
     expect(test("jkl-jh")).to.throw(/malformed column mapping/);
@@ -135,6 +132,5 @@ describe("the aggregator", function(){
     expect(test("jkl[3]")).to.throw(/malformed column mapping/);
     expect(test("jkl[")).to.throw(/malformed column mapping/);
     expect(test("jkl]")).to.throw(/malformed column mapping/);
-    
   });
 });

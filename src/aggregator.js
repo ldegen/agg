@@ -1,46 +1,44 @@
-module.exports = function() {
-  var ATTR_DELIM = '.';
-  var MAPPING_PATTERN = /^\w+(\[\])?(\.\w+(\[\])?)*$/;
-  var columnTypes = [];
-  var columnOrder = [];
-  var documents = [];
+var ATTR_DELIM = '.';
+var MAPPING_PATTERN = /^\w+(\[\])?(\.\w+(\[\])?)*$/;
+
+var stream = require("stream");
+
+
+var values = function(obj) {
+  return Object.keys(obj).map(function(key) {
+    return obj[key];
+  });
+};
+
+var prop = function(key) {
+  return function(obj) {
+    return obj[key];
+  };
+};
+
+var Processor = function(push) {
+
+  var stream = require("stream");
+  var columnTypes;
+  var columnOrder;
   var root;
   var partTypes = {};
 
-  var commit = function() {
-    if (root) {
-      documents.push(root);
-      root = null;
-    }
-  };
-
-  var values = function(obj){
-    return Object.keys(obj).map(function(key){
-      return obj[key];
-    });
-  };
-
-  var prop = function(key){
-    return function(obj){
-      return obj[key];
-    };
-  };
 
   var detectAmbiguities = function() {
-    values(partTypes).forEach(function(partType){
-      if(partType.leaf){
+    values(partTypes).forEach(function(partType) {
+      if (partType.leaf) {
         return;
       }
-      if(partType.multiValued){
-        if(values(partType.childrenTypes).every(prop("multiValued"))){
-          throw new Error("Ambiguous column mapping: the multi-valued part '"
-                          + partType.key +
-                          "' must have at least one single-valued attribute."
-                         );
+      if (partType.multiValued) {
+        if (values(partType.childrenTypes).every(prop("multiValued"))) {
+          throw new Error("Ambiguous column mapping: the multi-valued part '" + partType.key +
+            "' must have at least one single-valued attribute."
+          );
         }
       }
-      if(partType.root){
-        if(values(partType.childrenTypes).every(prop("multiValued"))){
+      if (partType.root) {
+        if (values(partType.childrenTypes).every(prop("multiValued"))) {
           throw new Error("Ambiguous column mapping: documents must have at least one single-valued attribute.");
         }
       }
@@ -54,27 +52,27 @@ module.exports = function() {
     if (!partType) {
       if (depth === 0) {
         partType = {
-          key:key,
+          key: key,
           root: true,
-          depth:0,
+          depth: 0,
           childrenTypes: {}
         };
       } else {
         var attribute = segments.pop();
         var partType = {
-          key:key,
+          key: key,
           childrenTypes: {},
           attribute: attribute.match(/[^\[]+/)[0],
           root: false,
-          depth:depth,
+          depth: depth,
           leaf: !child,
           multiValued: !!attribute.match(/\[\]$/),
           //      parentType: PartType(segments)
         };
         partType.parentType = PartType(segments, partType);
       }
-      partTypes[key]=partType;
-      
+      partTypes[key] = partType;
+
     }
     if (child) {
       partType.childrenTypes[child.attribute] = child;
@@ -82,9 +80,9 @@ module.exports = function() {
     return partType;
   };
 
-  var processHeader = function(label) {
-    if(!label.match(MAPPING_PATTERN)){
-      throw new Error("malformed column mapping: "+label);
+  var processHeaderCell = function(label) {
+    if (!label.match(MAPPING_PATTERN)) {
+      throw new Error("malformed column mapping: " + label);
     }
     var segments = label.split(ATTR_DELIM);
     return PartType(segments)
@@ -128,7 +126,7 @@ module.exports = function() {
 
   var processCell = function(value, colNum) {
     // empty cells are ignored *completely*.
-    if (typeof value == "undefined" || value === null) {
+    if (typeof value == "undefined" || value === null || value === "") {
       return;
     }
     var colType = columnTypes[colNum];
@@ -150,30 +148,68 @@ module.exports = function() {
   };
 
   var processRow = function(row) {
-    columnOrder.map(function(i){
-      processCell(row[i],i);
-    });
+    if (columnTypes) {
+      columnOrder.map(function(i) {
+        processCell(row[i], i);
+      });
+    } else {
+      processHeaderRow(row);
+    }
   };
 
-  var processTable = function(rows) {
-    columnTypes = rows.shift().map(processHeader);
-    columnOrder = columnTypes.map(function(colType,colPos){
+  var processHeaderRow = function(headerCells) {
+    columnTypes = headerCells.map(processHeaderCell);
+    columnOrder = columnTypes.map(function(colType, colPos) {
       return {
-        k: 2 * colType.depth + (colType.multiValued?1:0),
+        k: 2 * colType.depth + (colType.multiValued ? 1 : 0),
         i: colPos
       };
-    }).sort(function(a,b){
-      return a.k-b.k;
-    }).map(function(ki){
+    }).sort(function(a, b) {
+      return a.k - b.k;
+    }).map(function(ki) {
       return ki.i;
     });
     detectAmbiguities();
-    rows.forEach(processRow);
-    commit();
-    return documents;
+
+  };
+
+
+  var commit = function() {
+    if (root) {
+      push(root);
+      root = null;
+    }
   };
 
   return {
-    processTable: processTable
+    row: processRow,
+    commit: commit
   };
-}
+};
+
+module.exports.transformSync = function(rows) {
+  var documents = [];
+  var p = Processor(function(doc) {
+    documents.push(doc);
+  });
+  rows.forEach(p.row);
+  p.commit();
+  return documents;
+};
+
+module.exports.transform = function() {
+  var tf = new stream.Transform({
+    objectMode: true
+  });
+  var p = Processor(tf.push.bind(tf));
+
+  tf._transform = function(chunk, enc, done) {
+    p.row(chunk);
+    done();
+  };
+  tf._flush = function(done) {
+    p.commit();
+  };
+
+  return tf;
+};
