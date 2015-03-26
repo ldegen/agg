@@ -9,13 +9,15 @@
   },
   "scripts": {
     "test": "mocha spec src --require spec/helpers/chai.js",
-    "test-watch": "mocha -w spec src --require spec/helpers/chai.js"
+    "test-watch": "mocha -w spec src --require spec/helpers/chai.js",
+    "test-jenkins": "JUNIT_REPORT_PATH=report.xml JUNIT_REPORT_STACK=1 mocha spec src --require spec/helpers/chai.js --reporter mocha-jenkins-reporter||true"
   },
   "author": "Lukas Degener <l.degener@tarent.de>",
   "license": "ISC",
   "devDependencies": {
     "chai": "^2.1.2",
-    "mocha": "^2.2.1"
+    "mocha": "^2.2.1",
+    "mocha-jenkins-reporter": "^0.1.6"
   },
   "dependencies": {
     "csv-parse": "^0.1.0",
