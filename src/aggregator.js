@@ -3,6 +3,7 @@ module.exports = function() {
   var documents = [];
   var ATTR_DELIM = '.';
   var root;
+  var partTypes = {};
 
   var commit = function() {
     if (root) {
@@ -11,19 +12,68 @@ module.exports = function() {
     }
   };
 
-  var PartType = function(segments) {
-    if (segments.length === 0) {
-      return {
-        root: true
-      };
-    }
-    var attribute = segments.pop();
-    return {
-      attribute: attribute.match(/[^\[]+/)[0],
-      root: false,
-      multiValued: ! ! attribute.match(/\[\]$/),
-      parentType: PartType(segments)
+  var values = function(obj){
+    return Object.keys(obj).map(function(key){
+      return obj[key];
+    });
+  };
+
+  var prop = function(key){
+    return function(obj){
+      return obj[key];
     };
+  };
+
+  var detectAmbiguities = function() {
+    values(partTypes).forEach(function(partType){
+      if(partType.leaf){
+        return;
+      }
+      if(partType.multiValued){
+        if(values(partType.childrenTypes).every(prop("multiValued"))){
+          throw new Error("Ambiguous column mapping: the multi-valued part '"
+                          + partType.key +
+                          "' must have at least one single-valued attribute."
+                         );
+        }
+      }
+      if(partType.root){
+        if(values(partType.childrenTypes).every(prop("multiValued"))){
+          throw new Error("Ambiguous column mapping: documents must have at least one single-valued attribute.");
+        }
+      }
+    });
+  };
+
+  var PartType = function(segments, child) {
+    var key = segments.join('.');
+    var partType = partTypes[key];
+    if (!partType) {
+      if (segments.length === 0) {
+        partType = {
+          key:key,
+          root: true,
+          childrenTypes: {}
+        };
+      } else {
+        var attribute = segments.pop();
+        var partType = {
+          key:key,
+          childrenTypes: {},
+          attribute: attribute.match(/[^\[]+/)[0],
+          root: false,
+          leaf: !child,
+          multiValued: !!attribute.match(/\[\]$/),
+          //      parentType: PartType(segments)
+        };
+        partType.parentType = PartType(segments, partType);
+      }
+      partTypes[key]=partType;
+    }
+    if (child) {
+      partType.childrenTypes[child.attribute] = child;
+    }
+    return partType;
   };
 
   var processHeader = function(label) {
@@ -69,7 +119,7 @@ module.exports = function() {
 
   var processCell = function(value, colNum) {
     // empty cells are ignored *completely*.
-    if (typeof value=="undefined" || value === null) {
+    if (typeof value == "undefined" || value === null) {
       return;
     }
     var colType = columnTypes[colNum];
@@ -96,6 +146,7 @@ module.exports = function() {
 
   var processTable = function(rows) {
     columnTypes = rows.shift().map(processHeader);
+    detectAmbiguities();
     rows.forEach(processRow);
     commit();
     return documents;

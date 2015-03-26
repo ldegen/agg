@@ -71,4 +71,30 @@ describe("the aggregator", function(){
        {value:3, names:[{lang:"de",string:"Drei"},{lang:"hu",string:"Három"}]}
      ]);
   });
+
+  it("raises an exception if the column mapping is ambiguous", function(){
+    var table = [
+      [ "tablename" , "rows[].columns[]"] ,
+      [ "t1"        , "r0c0"            ] ,
+      [ null        , "r0c1"            ] ,
+      [ null        , "r1c0"            ] ,
+      [ null        , "r1c1"            ]
+    ];
+
+    var fn = function(){aggregator.processTable(table);};
+    expect(fn).to.throw(/'rows\[\]' must have at least one single-valued attribute/);
+  });
+
+  it("also detects ambiguities at the top level", function(){
+    var table = [
+      [ "words[]"] ,
+      [ "w00t"   ] ,
+      [ "lol"    ] ,
+      [ "orly"   ] ,
+      [ "tldr"   ]
+    ];
+
+    var fn = function(){aggregator.processTable(table);};
+    expect(fn).to.throw(/documents must have at least one single-valued attribute/);
+  });
 });
