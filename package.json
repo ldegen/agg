@@ -8,12 +8,14 @@
     "csv2json": "bin/csv2json.js"
   },
   "scripts": {
-    "test": "mocha spec src --require spec/helpers/chai.js"
+    "test": "mocha spec src --require spec/helpers/chai.js",
+    "test-watch": "mocha -w spec src --require spec/helpers/chai.js"
   },
   "author": "Lukas Degener <l.degener@tarent.de>",
   "license": "ISC",
   "devDependencies": {
-    "chai": "^2.1.2"
+    "chai": "^2.1.2",
+    "mocha": "^2.2.1"
   },
   "dependencies": {
     "csv-parse": "^0.1.0",
