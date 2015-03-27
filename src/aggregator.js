@@ -1,5 +1,5 @@
 var ATTR_DELIM = '.';
-var MAPPING_PATTERN = /^\w+(\[\])?(\.\w+(\[\])?)*$/;
+var MAPPING_PATTERN = /^(\w+(\[\])?\.)*\w+(\[\]|#)?$/;
 
 var stream = require("stream");
 
@@ -62,11 +62,12 @@ var Processor = function(push) {
         var partType = {
           key: key,
           childrenTypes: {},
-          attribute: attribute.match(/[^\[]+/)[0],
+          attribute: attribute.match(/\w+/)[0],
           root: false,
           depth: depth,
           leaf: !child,
           multiValued: !!attribute.match(/\[\]$/),
+          unique: !!attribute.match(/#$/)
           //      parentType: PartType(segments)
         };
         partType.parentType = PartType(segments, partType);
@@ -129,6 +130,7 @@ var Processor = function(push) {
     if (typeof value == "undefined" || value === null || value === "") {
       return;
     }
+
     var colType = columnTypes[colNum];
     var part = currentPart(colType.parentType);
 
@@ -138,10 +140,19 @@ var Processor = function(push) {
       }
       part[colType.attribute].push(value);
     } else {
-      // if a second attribute is encountered for a single-value
-      // attribute, create a new part.
+      // if a second value is encountered for a single-value
+      // attribute, there are two cases to examine:
       if (part.hasOwnProperty(colType.attribute)) {
-        part = startNewPart(colType.parentType);
+
+        //if the value is the same as the previous, and the
+        //attribute is marked "unique", just skip the cell.
+        if(part[colType.attribute]==value && colType.unique){
+          return;
+        }
+        //otherwise create a new part
+        else{
+          part = startNewPart(colType.parentType);
+        }
       }
       part[colType.attribute] = value;
     }

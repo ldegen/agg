@@ -69,6 +69,24 @@ describe("the aggregator", function(){
      ]);
   });
 
+  it("ignores consecutive identical values in 'id#'-fields",function(){
+    var docs = transform([
+       [ "value#"  , "names[]" ],
+       [ 1         , "Eins"    ],
+       [ 1         , "Egy"     ],
+       [ 2         , "Zwei"    ],
+       [ 2         , "Kettő"   ],
+       [ 3         , "Drei"    ],
+       [ 3         , "Három"   ]
+     ]);
+
+     expect(docs).to.eql([
+       {value:1, names:["Eins","Egy"]},
+       {value:2, names:["Zwei","Kettő"]},
+       {value:3, names:["Drei","Három"]}
+     ]);
+  });
+
   it("raises an exception if the column mapping is ambiguous", function(){
     var table = [
       [ "tablename" , "rows[].columns[]"] ,
@@ -117,6 +135,7 @@ describe("the aggregator", function(){
     ]);
   });
 
+
   it("checks the lexical well-formedness of the column mappings", function(){
     var test = function(str){
       return function(){
@@ -129,6 +148,9 @@ describe("the aggregator", function(){
     expect(test("jkl.")).to.throw(/malformed column mapping/);
     expect(test("jkl.[]")).to.throw(/malformed column mapping/);
     expect(test("jkl[][]")).to.throw(/malformed column mapping/);
+    expect(test("jkl#.bar")).to.throw(/malformed column mapping/);
+    expect(test("jkl[]#")).to.throw(/malformed column mapping/);
+    expect(test("jkl#[]")).to.throw(/malformed column mapping/);
     expect(test("jkl[3]")).to.throw(/malformed column mapping/);
     expect(test("jkl[")).to.throw(/malformed column mapping/);
     expect(test("jkl]")).to.throw(/malformed column mapping/);
