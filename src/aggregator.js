@@ -1,5 +1,5 @@
 var ATTR_DELIM = '.';
-var MAPPING_PATTERN = /^(\w+(\[\])?\.)*\w+(\[\]|#)?$/;
+var MAPPING_PATTERN = /^(\w+(\[\])?\.)*\w+(\[\]|[#+])?$/;
 
 var stream = require("stream");
 
@@ -46,7 +46,7 @@ var Processor = function(push) {
   };
 
   var PartType = function(segments, child) {
-    var key = segments.join('.');
+    var key = segments.map(function(segment){return segment.match(/\w+/).toString();}).join('.');
     var depth = segments.length;
     var partType = partTypes[key];
     if (!partType) {
@@ -67,7 +67,7 @@ var Processor = function(push) {
           depth: depth,
           leaf: !child,
           multiValued: !!attribute.match(/\[\]$/),
-          unique: !!attribute.match(/#$/)
+          unique: !!attribute.match(/[#+]$/)
           //      parentType: PartType(segments)
         };
         partType.parentType = PartType(segments, partType);
@@ -81,12 +81,17 @@ var Processor = function(push) {
     return partType;
   };
 
-  var processHeaderCell = function(label) {
+  var processHeaderCell = function(label,colNum) {
     if (!label.match(MAPPING_PATTERN)) {
       throw new Error("malformed column mapping: " + label);
     }
     var segments = label.split(ATTR_DELIM);
-    return PartType(segments)
+    var partType = PartType(segments);
+    if(partType.used){
+      throw new Error("attribute appears more than once: "+label);
+    }
+    partType.used=true;
+    return partType;
   };
 
   // *always* returns an object. Never null.
@@ -115,7 +120,7 @@ var Processor = function(push) {
     }
 
     if (!partType.multiValued) {
-      throw new Error("cannot start a new part of single-valued part type " + JSON.stringify(partType));
+      throw new Error("cannot start a new part of single-valued part type " + partType.key);
     }
 
     var parent = currentPart(partType.parentType);
