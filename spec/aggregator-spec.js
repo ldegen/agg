@@ -87,7 +87,7 @@ describe("the aggregator", function(){
        {value:3, names:["Drei","Három"]}
      ]);
   });
-  
+
   it("supports alternative notation for 'id+'-fields",function(){
     //... because '#' starts a line comment in many markup-languages.
     var docs = transform([
@@ -155,6 +155,30 @@ describe("the aggregator", function(){
   });
 
 
+  it("can demux wildcards to currently 'relevant' parts",function(){
+    var table =[
+      [ "*.ort"   , "event"       , "persons[].name" , "location.name" ],
+      [ ""        , "Pustekuchen" , ""               , ""              ],
+      [ "Berlin"  , ""            , ""               , "bcc"           ],
+      [ "Bonn"    , ""            , "Paul"           , ""              ],
+      [ "Leibzig" , ""            , "Peter"          , ""              ]
+    ];
+    expect(transform(table)).to.eql([{
+      event: 'Pustekuchen',
+      location:{
+        name: 'bcc',
+        ort: 'Berlin'
+      },
+      persons:[{
+        name:'Paul',
+        ort:'Bonn'
+      },{
+        name:'Peter',
+        ort:'Leibzig'
+      }]
+    }]);
+  });
+
   it("checks the lexical well-formedness of the column mappings", function(){
     var test = function(str){
       return function(){
@@ -174,26 +198,26 @@ describe("the aggregator", function(){
     expect(test("jkl[")).to.throw(/malformed column mapping/);
     expect(test("jkl]")).to.throw(/malformed column mapping/);
   });
-  
+
   it("raises an exception if more than one column is mapped on the same attribute",function(){
     var test = function(){
       var labels = Array.prototype.slice.call(arguments);
       return function(){
         transform([ labels]);
       };
-    };  
-    
-    expect(test("foo","foo")).to.throw(/attribute appears more than once.+foo/); 
-    expect(test("foo+","foo+")).to.throw(/attribute appears more than once.+foo/); 
-    expect(test("foo#","foo#")).to.throw(/attribute appears more than once.+foo/); 
-    expect(test("foo+","foo#")).to.throw(/attribute appears more than once.+foo/); 
-    expect(test("foo#","foo+")).to.throw(/attribute appears more than once.+foo/); 
-    expect(test("foo+","foo")).to.throw(/attribute appears more than once.+foo/); 
-    expect(test("foo#","foo")).to.throw(/attribute appears more than once.+foo/); 
-    expect(test("foo","foo+")).to.throw(/attribute appears more than once.+foo/); 
+    };
+
+    expect(test("foo","foo")).to.throw(/attribute appears more than once.+foo/);
+    expect(test("foo+","foo+")).to.throw(/attribute appears more than once.+foo/);
+    expect(test("foo#","foo#")).to.throw(/attribute appears more than once.+foo/);
+    expect(test("foo+","foo#")).to.throw(/attribute appears more than once.+foo/);
+    expect(test("foo#","foo+")).to.throw(/attribute appears more than once.+foo/);
+    expect(test("foo+","foo")).to.throw(/attribute appears more than once.+foo/);
+    expect(test("foo#","foo")).to.throw(/attribute appears more than once.+foo/);
+    expect(test("foo","foo+")).to.throw(/attribute appears more than once.+foo/);
     expect(test("foo","foo#")).to.throw(/attribute appears more than once.+foo/);
 
-    expect(test("foo[]","foo+")).to.throw(/attribute appears more than once.+foo/); 
-    expect(test("foo.bar","foo.bar#")).to.throw(/attribute appears more than once.+foo/); 
+    expect(test("foo[]","foo+")).to.throw(/attribute appears more than once.+foo/);
+    expect(test("foo.bar","foo.bar#")).to.throw(/attribute appears more than once.+foo/);
   });
 });

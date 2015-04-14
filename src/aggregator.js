@@ -1,5 +1,5 @@
 var ATTR_DELIM = '.';
-var MAPPING_PATTERN = /^(\w+(\[\])?\.)*\w+(\[\]|[#+])?$/;
+var MAPPING_PATTERN = /^(((\w+(\[\])?\.)*)|\*\.)\w+(\[\]|[#+])?$/;
 
 var stream = require("stream");
 
@@ -22,6 +22,9 @@ var Processor = function(push) {
   var columnTypes;
   var columnOrder;
   var root;
+  var wildcard = {
+    parts: []
+  };
   var partTypes = {};
 
 
@@ -46,7 +49,10 @@ var Processor = function(push) {
   };
 
   var PartType = function(segments, child) {
-    var key = segments.map(function(segment){return segment.match(/\w+/).toString();}).join('.');
+    var segments_ = segments.map(function(segment) {
+      return segment.match(/\w+|\*/).toString();
+    });
+    var key = segments_.join('.');
     var depth = segments.length;
     var partType = partTypes[key];
     if (!partType) {
@@ -62,15 +68,21 @@ var Processor = function(push) {
         var partType = {
           key: key,
           childrenTypes: {},
-          attribute: attribute.match(/\w+/)[0],
+          attribute: attribute.match(/\w+|\*/)[0],
           root: false,
           depth: depth,
           leaf: !child,
           multiValued: !!attribute.match(/\[\]$/),
           unique: !!attribute.match(/[#+]$/)
-          //      parentType: PartType(segments)
+            //      parentType: PartType(segments)
         };
-        partType.parentType = PartType(segments, partType);
+        if (attribute == '*') {
+          partType.wildcard = true;
+          partType.wildcardRoot = true;
+        } else {
+          partType.parentType = PartType(segments, partType);
+          partType.wildcard=partType.parentType.wildcard;
+        }
       }
       partTypes[key] = partType;
 
@@ -81,16 +93,16 @@ var Processor = function(push) {
     return partType;
   };
 
-  var processHeaderCell = function(label,colNum) {
+  var processHeaderCell = function(label, colNum) {
     if (!label.match(MAPPING_PATTERN)) {
       throw new Error("malformed column mapping: " + label);
     }
     var segments = label.split(ATTR_DELIM);
     var partType = PartType(segments);
-    if(partType.used){
-      throw new Error("attribute appears more than once: "+label);
+    if (partType.used) {
+      throw new Error("attribute appears more than once: " + label);
     }
-    partType.used=true;
+    partType.used = true;
     return partType;
   };
 
@@ -102,6 +114,10 @@ var Processor = function(push) {
         root = {};
       }
       return root;
+    }
+    //terminal case: wildcard
+    if (partType.wildcardRoot) {
+      return wildcard;
     }
 
     //recursive case
@@ -118,6 +134,9 @@ var Processor = function(push) {
       commit();
       return root = {};
     }
+    if (partType.wildcardRoot){
+      return wildcard = {parts:[]};
+    }
 
     if (!partType.multiValued) {
       throw new Error("cannot start a new part of single-valued part type " + partType.key);
@@ -130,6 +149,8 @@ var Processor = function(push) {
     return part;
   };
 
+
+
   var processCell = function(value, colNum) {
     // empty cells are ignored *completely*.
     if (typeof value == "undefined" || value === null || value === "") {
@@ -137,34 +158,52 @@ var Processor = function(push) {
     }
 
     var colType = columnTypes[colNum];
+
+    var putValue = function(part) {
+      if (colType.multiValued) {
+        if (!part[colType.attribute]) {
+          part[colType.attribute] = [];
+        }
+        part[colType.attribute].push(value);
+      } else {
+        // if a second value is encountered for a single-value
+        // attribute, there are two cases to examine:
+        if (part.hasOwnProperty(colType.attribute)) {
+
+          //if the value is the same as the previous, and the
+          //attribute is marked "unique", just skip the cell.
+          if (part[colType.attribute] == value && colType.unique) {
+            return;
+          }
+          //otherwise create a new part
+          else {
+            part = startNewPart(colType.parentType);
+          }
+        }
+        part[colType.attribute] = value;
+        // part is not an array (because then colType would be multi-valued)
+        // Unless we are not already processing a wildcard attribute, 
+        // we remember this part so it will receive wildcard-attributes later
+        // (if any)
+        if(!colType.wildcard && wildcard.parts.indexOf(part)<0){
+          wildcard.parts.push(part);
+        }
+      }
+    };
+
     var part = currentPart(colType.parentType);
-
-    if (colType.multiValued) {
-      if (!part[colType.attribute]) {
-        part[colType.attribute] = [];
-      }
-      part[colType.attribute].push(value);
-    } else {
-      // if a second value is encountered for a single-value
-      // attribute, there are two cases to examine:
-      if (part.hasOwnProperty(colType.attribute)) {
-
-        //if the value is the same as the previous, and the
-        //attribute is marked "unique", just skip the cell.
-        if(part[colType.attribute]==value && colType.unique){
-          return;
-        }
-        //otherwise create a new part
-        else{
-          part = startNewPart(colType.parentType);
-        }
-      }
-      part[colType.attribute] = value;
+    if(part === wildcard){
+      wildcard.parts.forEach(putValue);
+    }else{
+      putValue(part);
     }
+
   };
 
   var processRow = function(row) {
     if (columnTypes) {
+      //reset wildcard targets for each row!
+      wildcard = {parts:[]};
       columnOrder.map(function(i) {
         processCell(row[i], i);
       });
@@ -175,12 +214,23 @@ var Processor = function(push) {
 
   var processHeaderRow = function(headerCells) {
     columnTypes = headerCells.map(processHeaderCell);
+
+
+    // - concrete comes before wildcard
+    // - short paths come before long paths
+    // - single-valued come before multi-valued
+
     columnOrder = columnTypes.map(function(colType, colPos) {
       return {
         k: 2 * colType.depth + (colType.multiValued ? 1 : 0),
+        wc: colType.wildcard ? 1 : 0,
         i: colPos
       };
     }).sort(function(a, b) {
+      var wc = a.wc - b.wc;
+      if(wc!==0){
+        return wc;
+      }
       return a.k - b.k;
     }).map(function(ki) {
       return ki.i;
