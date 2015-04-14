@@ -181,11 +181,30 @@ var Processor = function(push) {
           }
         }
         part[colType.attribute] = value;
-        // part is not an array (because then colType would be multi-valued)
-        // Unless we are not already processing a wildcard attribute, 
-        // we remember this part so it will receive wildcard-attributes later
-        // (if any)
-        if(!colType.wildcard && wildcard.parts.indexOf(part)<0){
+        // Now, if this part is not an array, and if this is the first
+        // real contribution to this part we want to remember this part, 
+        // so that we can add wildcard attributes to it if we encounter 
+        // some later (they are always processed last!).
+        //
+        // There are a few cases, though, that we do not count as
+        // "real" contributions:
+        //
+        // - if the attribute is itself a wildcard
+        //
+        // - if the attribute is multi-valued (checked above)
+        //   In this case the part is an array and the actual contribution is
+        //   to one of its elements. Since this may or may not be an object, we
+        //   cannot add properties to it.
+        //
+        // - if the attribute is anotated as 'unique'. 
+        //   In this case, we simply cannot know whether the current row is 
+        //   actually contributing anythign to this part, but in most cases 
+        //   I can think of, it is not.
+        //
+        //   TODO: We could actually do better than that. We could allow for a 
+        //         special column that explicitly communicates the part type a 
+        //         row is contributing to.
+        if(!colType.unique && !colType.wildcard && wildcard.parts.indexOf(part)<0){
           wildcard.parts.push(part);
         }
       }
