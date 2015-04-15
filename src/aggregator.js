@@ -22,9 +22,7 @@ var Processor = function(push) {
   var columnTypes;
   var columnOrder;
   var root;
-  var wildcard = {
-    parts: []
-  };
+  var wildcard = {};
   var partTypes = {};
 
 
@@ -135,7 +133,7 @@ var Processor = function(push) {
       return root = {};
     }
     if (partType.wildcardRoot){
-      return wildcard = {parts:[]};
+      return wildcard = {};
     }
 
     if (!partType.multiValued) {
@@ -196,6 +194,9 @@ var Processor = function(push) {
         //   to one of its elements. Since this may or may not be an object, we
         //   cannot add properties to it.
         //
+        // - if the current row already contributed to an an ancestor part
+        //   of this part.
+        //
         // - if the attribute is anotated as 'unique'. 
         //   In this case, we simply cannot know whether the current row is 
         //   actually contributing anythign to this part, but in most cases 
@@ -204,15 +205,27 @@ var Processor = function(push) {
         //   TODO: We could actually do better than that. We could allow for a 
         //         special column that explicitly communicates the part type a 
         //         row is contributing to.
-        if(!colType.unique && !colType.wildcard && wildcard.parts.indexOf(part)<0){
-          wildcard.parts.push(part);
+        if(!colType.unique && !colType.wildcard &&! isInWildcard(colType.parentType)){
+          //addToWildcard(part);
+          wildcard[colType.parentType.key]=part;
         }
       }
+    };
+    var isInWildcard = function(partType){
+      if(wildcard.hasOwnProperty(partType.key)){
+        return true;
+      }
+      if(partType.root || partType.wildcard){
+        return false;
+      }
+      return isInWildcard(partType.parentType);
     };
 
     var part = currentPart(colType.parentType);
     if(part === wildcard){
-      wildcard.parts.forEach(putValue);
+      Object.keys(wildcard).forEach(function(key){
+        putValue(wildcard[key]);
+      });
     }else{
       putValue(part);
     }
@@ -222,7 +235,7 @@ var Processor = function(push) {
   var processRow = function(row) {
     if (columnTypes) {
       //reset wildcard targets for each row!
-      wildcard = {parts:[]};
+      wildcard = {};
       columnOrder.map(function(i) {
         processCell(row[i], i);
       });
