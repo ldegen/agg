@@ -179,6 +179,64 @@ describe("the aggregator", function(){
     }]);
   });
 
+  it("only adds wildcard attrs to leaf parts by default",function(){
+    var table = [
+      ["*.row" , "id+" , "persons[].id" , "persons[].role" , "title.de"        , "title.en"      ],
+      [1       , 100   , 101            , 'foo'            , ''                , ''              ],
+      [2       , 100   , 102            , 'foo'            , ''                , ''              ],
+      [3       , 100   , ''             , ''               , 'Deutscher Titel' , 'English Title' ]
+    ];
+
+    expect(transform(table)).to.eql([{
+      id:100,
+      persons:[{
+        row:1,
+        id:101,
+        role:'foo'
+      },{
+        row:2,
+        id:102,
+        role:'foo'
+      }],
+      title:{
+        row:3,
+        de:'Deutscher Titel',
+        en:'English Title'
+      }
+    }]);
+  });
+  
+  it("delegates wildcards up to parent if a part is written in parenthesis",function(){
+    var table = [
+      ["*.row" , "id+" , ":title.kurz.de"   , "title:lang.en"      ],
+      [1       , 100   , 'Deutscher Titel' , ''                    ],
+      [2       , 100   , ''                , 'English Title'       ]
+    ];
+    expect(transform(table)).to.eql([{
+      id:100,
+      row:1,
+      title:{
+        kurz:{
+          de:'Deutscher Titel'
+        },
+        lang:{
+          en:'English Title'
+        },
+        row: 2
+      }
+    }]);
+  });
+
+  it("throws an error if conflicting wildcard attr values are assigned to the same part",function(){
+    var table = [
+      ["*.row" , "id+" , "title.de"        , "title.en"      ],
+      [2       , 100   , ''                , 'English Title' ],
+      [3       , 100   , 'Deutscher Titel' , ''              ]
+    ];
+    var fn = function(){transform(table);};
+    expect(fn).to.throw(/conflicting assignment for wildcard attribute 'row'/);
+  });
+
   it("checks the lexical well-formedness of the column mappings", function(){
     var test = function(str){
       return function(){

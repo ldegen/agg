@@ -1,5 +1,6 @@
 var ATTR_DELIM = '.';
-var MAPPING_PATTERN = /^(((\w+(\[\])?\.)*)|\*\.)\w+(\[\]|[#+])?$/;
+//var MAPPING_PATTERN = /^(((\w+(\[\])?\.)*)|\*\.)\w+(\[\]|[#+])?$/;
+var MAPPING_PATTERN = /(^(((\w+(\[\])?[.])*\w+(\[\])?)?:)?(\w+(\[\])?[.])*\w+(\[\]|[#+])?$)|(^\*\.(\w+\.)*\w+[#+]?$)/;
 
 var stream = require("stream");
 
@@ -48,7 +49,7 @@ var Processor = function(push) {
 
   var PartType = function(segments, child) {
     var segments_ = segments.map(function(segment) {
-      return segment.match(/\w+|\*/).toString();
+      return segment.match(/\w+|\*/)[0];
     });
     var key = segments_.join('.');
     var depth = segments.length;
@@ -79,7 +80,7 @@ var Processor = function(push) {
           partType.wildcardRoot = true;
         } else {
           partType.parentType = PartType(segments, partType);
-          partType.wildcard=partType.parentType.wildcard;
+          partType.wildcard = partType.parentType.wildcard;
         }
       }
       partTypes[key] = partType;
@@ -95,8 +96,16 @@ var Processor = function(push) {
     if (!label.match(MAPPING_PATTERN)) {
       throw new Error("malformed column mapping: " + label);
     }
-    var segments = label.split(ATTR_DELIM);
+    var m = label.match(/^(?:([^:]*):)?([^:]+)$/);
+    var prefixSegments = [];
+    var prefixPartType;
+    if (typeof m[1] !== "undefined") {
+      prefixSegments = m[1] ? m[1].split(/[.]/) : [];
+      prefixPartType = PartType(prefixSegments);
+    }
+    var segments = prefixSegments.concat(m[2].split(/[.]/));
     var partType = PartType(segments);
+    partType.prefix = prefixPartType;
     if (partType.used) {
       throw new Error("attribute appears more than once: " + label);
     }
@@ -132,8 +141,8 @@ var Processor = function(push) {
       commit();
       return root = {};
     }
-    if (partType.wildcardRoot){
-      return wildcard = {};
+    if (partType.wildcardRoot) {
+      return wildcard;
     }
 
     if (!partType.multiValued) {
@@ -147,6 +156,67 @@ var Processor = function(push) {
     return part;
   };
 
+  var putValue = function(part, partType, colType, value) {
+
+    if (colType.multiValued) {
+      if (!part[colType.attribute]) {
+        part[colType.attribute] = [];
+      }
+      part[colType.attribute].push(value);
+    } else {
+      // if a second value is encountered for a single-value
+      // attribute, there are two cases to examine:
+      if (part.hasOwnProperty(colType.attribute)) {
+
+        //if the value is the same as the previous, and the
+        //attribute is marked "unique", just skip the cell.
+        if (part[colType.attribute] == value && colType.unique) {
+          return;
+        }
+        //if the value is for a wildcard attribute, we must
+        //raise an exception. A conflicting assignment typically means
+        //a wrong mapping
+        if (colType.wildcard) {
+          throw new Error("conflicting assignment for wildcard attribute '" + colType.attribute + "' in part '" + partType.key + "': "+value);
+        }
+        //otherwise create a new part
+        else {
+          part = startNewPart(partType);
+        }
+      }
+      part[colType.attribute] = value;
+
+      if (!colType.wildcard) {
+        if (colType.prefix) {
+          wildcard[colType.prefix.key] = {
+            part: currentPart(colType.prefix),
+            partType: colType.prefix,
+            keep: true
+          };
+        } else {
+          var anc = ancestorInWildcard(partType);
+          if (typeof anc === "string" && !wildcard[anc].keep) {
+            delete wildcard[anc];
+          }
+          wildcard[partType.key] = {
+            part: part,
+            partType: partType,
+            keep:false
+          };
+        }
+      }
+    }
+  };
+  var ancestorInWildcard = function(partType) {
+    if (wildcard.hasOwnProperty(partType.key)) {
+      return partType.key;
+    }
+    if (partType.root || partType.wildcard) {
+      return false;
+    }
+    return ancestorInWildcard(partType.parentType);
+  };
+
 
 
   var processCell = function(value, colNum) {
@@ -156,88 +226,33 @@ var Processor = function(push) {
     }
 
     var colType = columnTypes[colNum];
+    var partType = colType.parentType;
 
-    var putValue = function(part) {
-      if (colType.multiValued) {
-        if (!part[colType.attribute]) {
-          part[colType.attribute] = [];
-        }
-        part[colType.attribute].push(value);
-      } else {
-        // if a second value is encountered for a single-value
-        // attribute, there are two cases to examine:
-        if (part.hasOwnProperty(colType.attribute)) {
+    var part = currentPart(partType);
 
-          //if the value is the same as the previous, and the
-          //attribute is marked "unique", just skip the cell.
-          if (part[colType.attribute] == value && colType.unique) {
-            return;
-          }
-          //otherwise create a new part
-          else {
-            part = startNewPart(colType.parentType);
-          }
-        }
-        part[colType.attribute] = value;
-        // Now, if this part is not an array, and if this is the first
-        // real contribution to this part we want to remember this part, 
-        // so that we can add wildcard attributes to it if we encounter 
-        // some later (they are always processed last!).
-        //
-        // There are a few cases, though, that we do not count as
-        // "real" contributions:
-        //
-        // - if the attribute is itself a wildcard
-        //
-        // - if the attribute is multi-valued (checked above)
-        //   In this case the part is an array and the actual contribution is
-        //   to one of its elements. Since this may or may not be an object, we
-        //   cannot add properties to it.
-        //
-        // - if the current row already contributed to an an ancestor part
-        //   of this part.
-        //
-        // - if the attribute is anotated as 'unique'. 
-        //   In this case, we simply cannot know whether the current row is 
-        //   actually contributing anythign to this part, but in most cases 
-        //   I can think of, it is not.
-        //
-        //   TODO: We could actually do better than that. We could allow for a 
-        //         special column that explicitly communicates the part type a 
-        //         row is contributing to.
-        if(!colType.unique && !colType.wildcard &&! isInWildcard(colType.parentType)){
-          //addToWildcard(part);
-          wildcard[colType.parentType.key]=part;
-        }
-      }
-    };
-    var isInWildcard = function(partType){
-      if(wildcard.hasOwnProperty(partType.key)){
-        return true;
-      }
-      if(partType.root || partType.wildcard){
-        return false;
-      }
-      return isInWildcard(partType.parentType);
-    };
-
-    var part = currentPart(colType.parentType);
-    if(part === wildcard){
-      Object.keys(wildcard).forEach(function(key){
-        putValue(wildcard[key]);
+    if (part === wildcard) {
+      Object.keys(wildcard).forEach(function(key) {
+        var target = wildcard[key];
+        //console.log("add wc "+colType.key+"="+value+" to '"+target.partType.key+"'");
+        putValue(target.part, target.partType,colType,value);
       });
-    }else{
-      putValue(part);
+    } else {
+      //console.log("add  "+colType.key+"="+value+" to '"+partType.key+"'");
+      putValue(part,partType,colType,value);
     }
 
   };
 
-  var processRow = function(row) {
+  var processRow = function(row,rownum) {
     if (columnTypes) {
       //reset wildcard targets for each row!
       wildcard = {};
       columnOrder.map(function(i) {
-        processCell(row[i], i);
+        try{
+          processCell(row[i], i);
+        }catch(e){
+          throw new Error(rownum+","+i+": "+e.message);
+        }
       });
     } else {
       processHeaderRow(row);
@@ -260,7 +275,7 @@ var Processor = function(push) {
       };
     }).sort(function(a, b) {
       var wc = a.wc - b.wc;
-      if(wc!==0){
+      if (wc !== 0) {
         return wc;
       }
       return a.k - b.k;
@@ -300,9 +315,10 @@ module.exports.transform = function() {
     objectMode: true
   });
   var p = Processor(tf.push.bind(tf));
+  var rownum=0;
 
   tf._transform = function(chunk, enc, done) {
-    p.row(chunk);
+    p.row(chunk,rownum++);
     done();
   };
   tf._flush = function(done) {

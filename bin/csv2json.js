@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 var TransformToBulk = require('elasticsearch-streams').TransformToBulk;
 var Parse = require('csv-parse');
 var Aggregate = require('../src/aggregator');
@@ -15,20 +16,41 @@ var meta = function(doc) {
   };
 };
 
-var parse = Parse({auto_parse:true});
+var parse = Parse({
+  auto_parse: true
+});
 var aggregate = Aggregate.transform();
 var toBulk = new TransformToBulk(meta);
 
-var stringify = new Transform({objectMode:true});
-stringify._transform = function(chunk,enc,done){
-  this.push(JSON.stringify(chunk)+"\n");
+var parseBooleans = new Transform({
+  objectMode: true
+});
+parseBooleans._transform = function(chunk, enc, done) {
+  this.push(chunk.map(function(v) {
+    if (v === 'true') {
+      return true;
+    } else if (v == 'false') {
+      return false;
+    }
+    return v;
+  }));
+  done();
+};
+var stringify = new Transform({
+  objectMode: true
+});
+stringify._transform = function(chunk, enc, done) {
+  this.push(JSON.stringify(chunk) + "\n");
   done();
 };
 
 
+
+
 process.stdin
-.pipe(parse)
-.pipe(aggregate)
-.pipe(toBulk)
-.pipe(stringify)
-.pipe(process.stdout);
+  .pipe(parse)
+  .pipe(parseBooleans)
+  .pipe(aggregate)
+  .pipe(toBulk)
+  .pipe(stringify)
+  .pipe(process.stdout);
