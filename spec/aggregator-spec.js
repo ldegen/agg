@@ -205,7 +205,20 @@ describe("the aggregator", function(){
       }
     }]);
   });
-  
+  it("ignores wildcards if all contributed leafs are multivalued", function(){
+    //in particular, it does NOT try to add the wc attrs to ancestor parts
+    var table = [
+      ["id+" , "*.wc" , "multi[]" ],
+      [ 10   , 1      , 'a'       ],
+      [ 10   , 2      , 'b'       ],
+      [ 10   , 3      , ''        ],
+    ];
+    expect(transform(table)).to.eql([{
+      id:10,
+      wc:3,
+      multi:['a','b']
+    }]);
+  });
   it("delegates wildcards up to parent if a part is written in parenthesis",function(){
     var table = [
       ["*.row" , "id+" , ":title.kurz.de"   , "title:lang.en"      ],
@@ -224,6 +237,50 @@ describe("the aggregator", function(){
         },
         row: 2
       }
+    }]);
+  });
+  it("supports adding wildcards to multivalued arguments",function(){
+    var table = [
+      ['id+' , '*.foo' , 'multi[]:bar' ],
+      [100   , 10      , 1             ],
+      [100   , 20      , 2             ],
+      [100   , 30      , 3             ]
+    ];
+    expect(transform(table)).to.eql([{
+      id:100,
+      multi:[{
+        foo:10,
+        bar:1
+      },{
+        foo:20,
+        bar:2
+      },{
+        foo:30,
+        bar:3
+      }]
+    }]);
+
+  });
+
+  it("supports adding wildcards to multivalued arguments",function(){
+    var table = [
+      ['id+' , '*.foo' , 'multi[]:bar.baz' ],
+      [100   , 10      , 1             ],
+      [100   , 20      , 2             ],
+      [100   , 30      , 3             ]
+    ];
+    expect(transform(table)).to.eql([{
+      id:100,
+      multi:[{
+        foo:10,
+        bar:{baz:1}
+      },{
+        foo:20,
+        bar:{baz:2}
+      },{
+        foo:30,
+        bar:{baz:3}
+      }]
     }]);
   });
 

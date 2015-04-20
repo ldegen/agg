@@ -101,10 +101,10 @@ var Processor = function(push) {
     var prefixPartType;
     if (typeof m[1] !== "undefined") {
       prefixSegments = m[1] ? m[1].split(/[.]/) : [];
-      prefixPartType = PartType(prefixSegments);
+      prefixPartType = PartType(prefixSegments.slice());
     }
     var segments = prefixSegments.concat(m[2].split(/[.]/));
-    var partType = PartType(segments);
+    var partType = PartType(segments.slice());
     partType.prefix = prefixPartType;
     if (partType.used) {
       throw new Error("attribute appears more than once: " + label);
@@ -145,39 +145,74 @@ var Processor = function(push) {
       return wildcard;
     }
 
-    if (!partType.multiValued) {
-      throw new Error("cannot start a new part of single-valued part type " + partType.key);
+    var parent;
+    if (partType.multiValued) {
+      parent = currentPart(partType.parentType);
+      var mountPoint = parent[partType.attribute];
+      var part = {};
+      mountPoint.push(part);
+      return part;
+    } else {
+      var parent = startNewPart(partType.parentType);
+      var part = {};
+      parent[partType.attribute] = part;
+      return part;
     }
+  };
 
-    var parent = currentPart(partType.parentType);
-    var mountPoint = parent[partType.attribute];
-    var part = {};
-    mountPoint.push(part);
-    return part;
+  var removeAncestorsFromWildcard = function(partType) {
+    var anc = ancestorInWildcard(partType);
+    if (typeof anc === "string" &&  anc!==partType.key && !wildcard[anc].keep) {
+    //  console.log("wc remove '"+partType.key+"'");
+      delete wildcard[anc];
+    }
+  };
+
+  var addToWildcard = function(part, partType, colType, value) {
+    removeAncestorsFromWildcard(partType);
+    if (!colType.wildcard) {
+    //  console.log("wc add '"+partType.key+"'");
+      if (colType.prefix) {
+        wildcard[colType.prefix.key] = {
+          part: currentPart(colType.prefix),
+          partType: colType.prefix,
+          keep: true
+        };
+      } else {
+        wildcard[partType.key] = {
+          part: part,
+          partType: partType,
+          keep: false
+        };
+      }
+    }
   };
 
   var putValue = function(part, partType, colType, value) {
-
+//    console.log("put to '"+partType.key+"'",colType.key,value);
     if (colType.multiValued) {
       if (!part[colType.attribute]) {
         part[colType.attribute] = [];
       }
       part[colType.attribute].push(value);
+      removeAncestorsFromWildcard(colType);
     } else {
       // if a second value is encountered for a single-value
       // attribute, there are two cases to examine:
       if (part.hasOwnProperty(colType.attribute)) {
+        var prevVal = part[colType.attribute];
 
         //if the value is the same as the previous, and the
         //attribute is marked "unique", just skip the cell.
-        if (part[colType.attribute] == value && colType.unique) {
+        if (prevVal == value && colType.unique) {
+          addToWildcard(part,partType,colType,value);
           return;
         }
         //if the value is for a wildcard attribute, we must
         //raise an exception. A conflicting assignment typically means
         //a wrong mapping
         if (colType.wildcard) {
-          throw new Error("conflicting assignment for wildcard attribute '" + colType.attribute + "' in part '" + partType.key + "': "+value);
+          throw new Error("conflicting assignment for wildcard attribute '" + colType.attribute + "' in part '" + partType.key + "': " + value + "(prev. Value:" + prevVal + ")" + root.id);
         }
         //otherwise create a new part
         else {
@@ -185,26 +220,7 @@ var Processor = function(push) {
         }
       }
       part[colType.attribute] = value;
-
-      if (!colType.wildcard) {
-        if (colType.prefix) {
-          wildcard[colType.prefix.key] = {
-            part: currentPart(colType.prefix),
-            partType: colType.prefix,
-            keep: true
-          };
-        } else {
-          var anc = ancestorInWildcard(partType);
-          if (typeof anc === "string" && !wildcard[anc].keep) {
-            delete wildcard[anc];
-          }
-          wildcard[partType.key] = {
-            part: part,
-            partType: partType,
-            keep:false
-          };
-        }
-      }
+      addToWildcard(part, partType, colType, value);
     }
   };
   var ancestorInWildcard = function(partType) {
@@ -234,24 +250,24 @@ var Processor = function(push) {
       Object.keys(wildcard).forEach(function(key) {
         var target = wildcard[key];
         //console.log("add wc "+colType.key+"="+value+" to '"+target.partType.key+"'");
-        putValue(target.part, target.partType,colType,value);
+        putValue(target.part, target.partType, colType, value);
       });
     } else {
       //console.log("add  "+colType.key+"="+value+" to '"+partType.key+"'");
-      putValue(part,partType,colType,value);
+      putValue(part, partType, colType, value);
     }
 
   };
 
-  var processRow = function(row,rownum) {
+  var processRow = function(row, rownum) {
     if (columnTypes) {
       //reset wildcard targets for each row!
       wildcard = {};
       columnOrder.map(function(i) {
-        try{
+        try {
           processCell(row[i], i);
-        }catch(e){
-          throw new Error(rownum+","+i+": "+e.message);
+        } catch (e) {
+          throw new Error(rownum + "," + i + ": " + e.message);
         }
       });
     } else {
@@ -315,10 +331,10 @@ module.exports.transform = function() {
     objectMode: true
   });
   var p = Processor(tf.push.bind(tf));
-  var rownum=0;
+  var rownum = 0;
 
   tf._transform = function(chunk, enc, done) {
-    p.row(chunk,rownum++);
+    p.row(chunk, rownum++);
     done();
   };
   tf._flush = function(done) {
