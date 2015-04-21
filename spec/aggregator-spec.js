@@ -69,8 +69,44 @@ describe("the aggregator", function(){
      ]);
   });
 
+  it("supports maps",function(){
+     var docs = transform([
+       [ "value"   , "names[].lang#" , "names[].string" ] ,
+       [ 1         , "de"            , "Eins"           ] ,
+       [ undefined , "hu"            , "Egy"            ] ,
+       [ 2         , "de"            , "Zwei"           ] ,
+       [ null      , "hu"            , "Kettő"          ] ,
+       [ 3         , "de"            , "Drei"           ] ,
+       [ undefined , "hu"            , "Három"          ]
+     ]);
 
-  it("ignores consecutive identical values in 'id#'-fields",function(){
+     expect(docs).to.eql([
+       {value:1, names:{de: {lang:"de",string:"Eins"}, hu:{lang:"hu",string:"Egy"}}},
+       {value:2, names:{de: {lang:"de",string:"Zwei"}, hu:{lang:"hu",string:"Kettő"}}},
+       {value:3, names:{de: {lang:"de",string:"Drei"}, hu:{lang:"hu",string:"Három"}}}
+     ]);
+  });
+
+  it("detects conflicting pk attributes in multi-valued parts",function(){
+    var fn = function(table){
+      return function(){
+        transform(table);
+      };
+    };
+    expect(fn([
+        ["id#" , "names[].id#" , "names[].key#" ],
+        [ 0    , 1             , ''             ],
+        [ 0    , ''            , 1              ]
+    ])).to.throw(/2,2: Second pk attribute for part 'names': 'names.key', previous: 'id'/);
+    expect(fn([
+        ["id#" , "names[].id#" , "*.key#" ],
+        [ 0    , 1             , ''       ],
+        [ 0    , 1             , 1        ]
+    ])).to.throw(/2,2: Second pk attribute for part 'names': '\*\.key', previous: 'id'/);
+  });
+
+
+  it("ignores consecutive identical values in key attribute (e.g. 'id#')",function(){
     var docs = transform([
        [ "value#"  , "names[]" ],
        [ 1         , "Eins"    ],
@@ -88,8 +124,7 @@ describe("the aggregator", function(){
      ]);
   });
 
-  it("supports alternative notation for 'id+'-fields",function(){
-    //... because '#' starts a line comment in many markup-languages.
+  it("ignores consecutive identical values for unique fields (e.g.'docType+')",function(){
     var docs = transform([
        [ "value+"  , "names[]" ],
        [ 1         , "Eins"    ],
@@ -106,6 +141,7 @@ describe("the aggregator", function(){
        {value:3, names:["Drei","Három"]}
      ]);
   });
+
   it("raises an exception if the column mapping is ambiguous", function(){
     var table = [
       [ "tablename" , "rows[].columns[]"] ,

@@ -4,10 +4,10 @@ var TransformToBulk = require('elasticsearch-streams').TransformToBulk;
 var Parse = require('csv-parse');
 var Aggregate = require('../src/aggregator');
 var Transform = require('stream').Transform;
+var Writable = require('stream').Writable;
 
 
 var argv = require('minimist')(process.argv.slice(2));
-
 
 var meta = function(doc) {
   return {
@@ -44,13 +44,40 @@ stringify._transform = function(chunk, enc, done) {
   done();
 };
 
+var collect = (function() {
+  var tf = new Transform({
+    objectMode: true
+  });
+  var document = {}; 
+  var idArg = argv.id || 'id';
+  tf._transform=function(chunk, enc, done) {
+    document[chunk[idArg]]=chunk;
+    done();
+  };
+
+  tf._flush=function(done){
+    this.push(document);
+    done();
+  };
+
+  return tf;
+})();
 
 
-
-process.stdin
-  .pipe(parse)
-  .pipe(parseBooleans)
-  .pipe(aggregate)
-  .pipe(toBulk)
-  .pipe(stringify)
-  .pipe(process.stdout);
+if (argv.s) {
+  process.stdin
+    .pipe(parse)
+    .pipe(parseBooleans)
+    .pipe(aggregate)
+    .pipe(collect)
+    .pipe(stringify)
+    .pipe(process.stdout)
+} else {
+  process.stdin
+    .pipe(parse)
+    .pipe(parseBooleans)
+    .pipe(aggregate)
+    .pipe(toBulk)
+    .pipe(stringify)
+    .pipe(process.stdout);
+}
