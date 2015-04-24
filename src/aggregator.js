@@ -1,6 +1,5 @@
 var ATTR_DELIM = '.';
-//var MAPPING_PATTERN = /^(((\w+(\[\])?\.)*)|\*\.)\w+(\[\]|[#+])?$/;
-var MAPPING_PATTERN = /(^(((\w+(\[\])?[.])*\w+(\[\])?)?:)?(\w+(\[\])?[.])*\w+(\[\]|[#+])?$)|(^\*\.(\w+\.)*\w+[#+]?$)/;
+var MAPPING_PATTERN = /(^(((\w+(\[\])?[.])*\w+(\[\])?)?:)?(\w+(\[\])?[.])*\w+(\[\]|#\w*|[+])?$)|(^\*\.(\w+\.)*\w+(#\w*|[+])?$)/;
 
 var stream = require("stream");
 
@@ -65,6 +64,8 @@ var Processor = function(push) {
         };
       } else {
         var attribute = segments.pop();
+        var pk = !!attribute.match(/#/);
+        var valueAttrMatch = attribute.match(/#(\w+)$/);
         var partType = {
           key: key,
           childrenTypes: {},
@@ -73,8 +74,9 @@ var Processor = function(push) {
           depth: depth,
           leaf: !child,
           multiValued: !!attribute.match(/\[\]$/),
-          unique: !!attribute.match(/[#+]$/),
-          pk: !!attribute.match(/[#]$/)
+          unique: !!attribute.match(/[#+]/),
+          pk: pk,
+          valueAttr: valueAttrMatch ? valueAttrMatch[1] : undefined
         };
         if (attribute == '*') {
           partType.wildcard = true;
@@ -272,7 +274,7 @@ var Processor = function(push) {
         if (!partType.pkAttribute) {
           partType.pkAttribute = colType.attribute;
           partType.parentType.reduce[partType.attribute] = function(prev, cur) {
-            prev[cur[partType.pkAttribute]] = cur;
+            prev[cur[partType.pkAttribute]] = colType.valueAttr ? cur[colType.valueAttr] : cur;
             return prev;
           };
 

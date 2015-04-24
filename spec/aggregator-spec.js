@@ -86,6 +86,23 @@ describe("the aggregator", function(){
        {value:3, names:{de: {lang:"de",string:"Drei"}, hu:{lang:"hu",string:"Három"}}}
      ]);
   });
+  it("supports inlining maps", function(){
+     var docs = transform([
+       [ "value"   , "names[].lang#string" , "names[].string" ],
+       [ 1         , "de"                  , "Eins"           ],
+       [ undefined , "hu"                  , "Egy"            ],
+       [ 2         , "de"                  , "Zwei"           ],
+       [ null      , "hu"                  , "Kettő"          ],
+       [ 3         , "de"                  , "Drei"           ],
+       [ undefined , "hu"                  , "Három"          ]
+     ]);
+
+     expect(docs).to.eql([
+       {value:1, names:{de: "Eins", hu:"Egy"}},
+       {value:2, names:{de: "Zwei", hu:"Kettő"}},
+       {value:3, names:{de: "Drei", hu:"Három"}}
+     ]);
+  });
 
   it("detects conflicting pk attributes in multi-valued parts",function(){
     var fn = function(table){
