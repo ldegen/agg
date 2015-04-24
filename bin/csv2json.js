@@ -49,9 +49,10 @@ var collect = (function() {
     objectMode: true
   });
   var document = {}; 
-  var idArg = argv.id || 'id';
+  var idAttr = argv.k;
+  var valueAttr = argv.v;
   tf._transform=function(chunk, enc, done) {
-    document[chunk[idArg]]=chunk;
+    document[chunk[idAttr]]=valueAttr ? chunk[valueAttr] : chunk;
     done();
   };
 
@@ -64,7 +65,7 @@ var collect = (function() {
 })();
 
 
-if (argv.s) {
+if (argv.k) {
   process.stdin
     .pipe(parse)
     .pipe(parseBooleans)
