@@ -144,11 +144,11 @@ var Processor = function(push) {
     }
     if (!parent[partType.attribute]) {
       var mp = parent[partType.attribute] = partType.multiValued ? [{}] : {};
-      var part =(partType.multiValued ? mp[0] : mp);
+      var part = (partType.multiValued ? mp[0] : mp);
 
       activePartTypes[partType.key] = {
         partType: partType,
-        part: part      
+        part: part
       };
       //console.error("activate",partType.key,part)
     }
@@ -167,7 +167,7 @@ var Processor = function(push) {
     commitPart(partType);
     if (partType.root) {
       commit();
-      root={};
+      root = {};
       //console.error("activate", partType.key,root);
       activePartTypes[partType.key] = {
         partType: partType,
@@ -372,10 +372,9 @@ var Processor = function(push) {
     //console.error("commitPart", partType.key);
     delete activePartTypes[partType.key];
     Object.keys(partType.reduce).forEach(function(attr) {
-      //console.error("reducing", partType.key, attr);
-      //console.error("from", part);
-    
-      part[attr] = part[attr].reduce(partType.reduce[attr], {});
+      if (part[attr]) {
+        part[attr] = part[attr].reduce(partType.reduce[attr], {});
+      }
       //console.error("to", part[attr]);
     });
   };
