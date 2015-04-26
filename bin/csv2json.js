@@ -5,6 +5,7 @@ var Parse = require('csv-parse');
 var Aggregate = require('../src/aggregator');
 var Transform = require('stream').Transform;
 var Writable = require('stream').Writable;
+var Path = require('path');
 
 
 var argv = require('minimist')(process.argv.slice(2));
@@ -44,13 +45,11 @@ stringify._transform = function(chunk, enc, done) {
   done();
 };
 
-var collect = (function() {
+var Collect = function(idAttr,valueAttr) {
   var tf = new Transform({
     objectMode: true
   });
   var document = {}; 
-  var idAttr = argv.k;
-  var valueAttr = argv.v;
   tf._transform=function(chunk, enc, done) {
     document[chunk[idAttr]]=valueAttr ? chunk[valueAttr] : chunk;
     done();
@@ -62,23 +61,28 @@ var collect = (function() {
   };
 
   return tf;
-})();
+};
 
+var Transformer = function(transformerPath,lookupPath){
+  var CustomTransformer = require(Path.resolve(transformerPath));
+  return lookupPath ? CustomTransformer(require(Path.resolve(lookupPath))) : CustomTransformer();
+};
 
-if (argv.k) {
-  process.stdin
+var pipeline = process.stdin
     .pipe(parse)
     .pipe(parseBooleans)
-    .pipe(aggregate)
-    .pipe(collect)
-    .pipe(stringify)
-    .pipe(process.stdout)
-} else {
-  process.stdin
-    .pipe(parse)
-    .pipe(parseBooleans)
-    .pipe(aggregate)
-    .pipe(toBulk)
-    .pipe(stringify)
-    .pipe(process.stdout);
+    .pipe(aggregate);
+
+if (argv.k) { //reduce to single object
+    pipeline =pipeline.pipe(Collect(argv.k,argv.v));
 }
+if (argv.t){ //apply custom transformation
+    pipeline = pipeline.pipe(Transformer(argv.t,argv.l));
+}
+if (argv.b){ //create elasticsearch bulk stream
+    pipeline = pipeline.pipe(toBulk);
+}
+
+pipeline
+  .pipe(stringify)
+  .pipe(process.stdout)
