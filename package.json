@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "csv-parse": "^0.1.0",
+    "elasticsearch": "^4.0.2",
     "elasticsearch-streams": "0.0.7",
     "minimist": "^1.1.1"
   }
