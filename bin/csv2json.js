@@ -17,6 +17,7 @@ var settings = {
   valueAttr: argv.v,
   transformPath: argv.T,
   lookupPath: argv.L,
+  filterPath: argv.F
   createEsBulk: argv.b || !!argv.I,
   singleObject: argv.s,
   esType: argv.t || 'project',
@@ -77,6 +78,10 @@ var Collect = function(idAttr, valueAttr) {
   return tf;
 };
 
+var Filter = function(filterPath, lookupPath) {
+  var CustomFilter = require(Path.resolve(filterPath));
+  return lookupPath ? CustomFilter(require(Path.resolve(lookupPath))) : CustomFilter();
+};
 var Transformer = function(transformerPath, lookupPath) {
   var CustomTransformer = require(Path.resolve(transformerPath));
   return lookupPath ? CustomTransformer(require(Path.resolve(lookupPath))) : CustomTransformer();
@@ -85,7 +90,12 @@ var Transformer = function(transformerPath, lookupPath) {
 var pipeline = process.stdin
   .pipe(parse)
   .pipe(parseBooleans)
-  .pipe(aggregate);
+
+if(settings.filterPath){
+  pipeline = pipeline.pipe(Filter(settings.filterPath,settings.lookupPath));
+}
+
+pipeline=pipeline.pipe(aggregate);
 
 if (settings.singleObject) { //reduce to single object
   pipeline = pipeline.pipe(Collect(settings.idAttr, settings.valueAttr));
