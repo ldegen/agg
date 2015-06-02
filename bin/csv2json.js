@@ -17,7 +17,7 @@ var settings = {
   valueAttr: argv.v,
   transformPath: argv.T,
   lookupPath: argv.L,
-  filterPath: argv.F
+  filterPath: argv.F,
   createEsBulk: argv.b || !!argv.I,
   singleObject: argv.s,
   esType: argv.t || 'project',
@@ -33,7 +33,7 @@ var meta = function(doc) {
 };
 
 var parse = Parse({
-  auto_parse: true
+  auto_parse: false
 });
 var aggregate = Aggregate.transform();
 var toBulk = new TransformToBulk(meta);
@@ -41,15 +41,9 @@ var toBulk = new TransformToBulk(meta);
 var parseBooleans = new Transform({
   objectMode: true
 });
+var parseValue = require("../src/value-parser.js")();
 parseBooleans._transform = function(chunk, enc, done) {
-  this.push(chunk.map(function(v) {
-    if (v === 'true') {
-      return true;
-    } else if (v == 'false') {
-      return false;
-    }
-    return v;
-  }));
+  this.push(chunk.map(parseValue));
   done();
 };
 var stringify = new Transform({
