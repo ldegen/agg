@@ -16,13 +16,19 @@
   "license": "ISC",
   "devDependencies": {
     "chai": "^2.1.2",
+    "chai-as-promised": "^5.1.0",
+    "concat-stream": "^1.4.8",
     "mocha": "^2.2.1",
-    "mocha-jenkins-reporter": "^0.1.6"
+    "mocha-jenkins-reporter": "^0.1.6",
+    "promise": "^7.0.1",
+    "through": "^2.3.7"
   },
   "dependencies": {
     "csv-parse": "^0.1.0",
     "elasticsearch": "^4.0.2",
     "elasticsearch-streams": "0.0.7",
-    "minimist": "^1.1.1"
+    "minimist": "^1.1.1",
+    "stream-combiner": "^0.2.2",
+    "yargs": "^3.10.0"
   }
 }
