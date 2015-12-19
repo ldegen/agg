@@ -10,6 +10,7 @@ module.exports = function(process) {
 
   var settings = {
     idAttr: argv.k || 'id',
+    typeAttr: argv.y || 'type',
     valueAttr: argv.v,
     transformPath: argv.T,
     lookupPath: argv.L,
@@ -23,7 +24,7 @@ module.exports = function(process) {
 
   var meta = function(doc) {
     return {
-      _type: settings.esType,
+      _type: doc[settings.typeAttr] || settings.esType,
       _id: doc[settings.idAttr]
     };
   };
@@ -78,7 +79,7 @@ module.exports = function(process) {
       return lookupPath ? Factory(lookup) : Factory();
     });
   };
-  var createEsSink = function(host, index, type) {
+  var createEsSink = function(host, index) {
     var client = new EsClient({
       host: host,
       keepAlive: false //wouldn't make sense in our case
@@ -86,7 +87,6 @@ module.exports = function(process) {
     var bulkExec = function(bulkCmds, callback) {
       client.bulk({
         index: index,
-        type: type,
         body: bulkCmds
       }, callback);
     };
@@ -116,7 +116,7 @@ module.exports = function(process) {
     },
     output: function() {
       if (settings.esIndex) {
-        return createEsSink(settings.esHost, settings.esIndex, settings.esType);
+        return createEsSink(settings.esHost, settings.esIndex);
       } else {
         stringify.pipe(process.stdout);
         return stringify;
