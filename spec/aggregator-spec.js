@@ -118,7 +118,7 @@ describe("the aggregator", function(){
     expect(fn([
         ["id#" , "names[].id#" , "*.key#" ],
         [ 0    , 1             , ''       ],
-        [ 0    , 1             , 1        ]
+        [ 0    , 2             , 1        ]
     ])).to.throw(/2,2: Second pk attribute for part 'names': '\*\.key', previous: 'id'/);
   });
 
@@ -268,7 +268,6 @@ describe("the aggregator", function(){
     ];
     expect(transform(table)).to.eql([{
       id:10,
-      wc:3,
       multi:['a','b']
     }]);
   });

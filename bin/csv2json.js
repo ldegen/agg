@@ -6,7 +6,7 @@ var cli = Cli(process);
 
 cli.input()
 .pipe(cli.preprocessor())
-.pipe(Aggregate.transform())
+.pipe(Aggregate.transform(cli.errorHook))
 .pipe(cli.postprocessor())
 .pipe(cli.output());
 

@@ -16,7 +16,7 @@ var prop = function(key) {
   };
 };
 
-var Processor = function(push) {
+var Processor = function(push,errorHook) {
 
   var stream = require("stream");
   var columnTypes;
@@ -248,7 +248,7 @@ var Processor = function(push) {
         //if the value is the same as the previous, and the
         //attribute is marked "unique", just skip the cell.
         if (prevVal == value && colType.unique) {
-          addToWildcard(part, partType, colType, value);
+          //addToWildcard(part, partType, colType, value);
           return;
         }
         //if the value is for a wildcard attribute, we must
@@ -326,6 +326,9 @@ var Processor = function(push) {
         try {
           processCell(row[i], i);
         } catch (e) {
+          if(typeof errorHook == "function") {
+            errorHook(e, rownum, i);
+          }
           e.message = (rownum + "," + i + ": " + e.message);
           throw e;
         }
@@ -412,11 +415,11 @@ module.exports.transformSync = function(rows) {
   return documents;
 };
 
-module.exports.transform = function() {
+module.exports.transform = function(errorHook) {
   var tf = new stream.Transform({
     objectMode: true
   });
-  var p = Processor(tf.push.bind(tf));
+  var p = Processor(tf.push.bind(tf),errorHook);
   var rownum = 0;
 
   tf._transform = function(chunk, enc, done) {

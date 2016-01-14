@@ -7,6 +7,7 @@ var Transform = require('stream').Transform;
 var combine = require('stream-combiner');
 module.exports = function(process) {
   var argv = require('minimist')(process.argv.slice(2));
+  var errorHooks = [];
 
   var settings = {
     idAttr: argv.k || 'id',
@@ -76,7 +77,12 @@ module.exports = function(process) {
     var lookup = lookupPath ? require(Path.resolve(lookupPath)) : null;
     return modules.map(function(module) {
       var Factory = require(Path.resolve(module));
-      return lookupPath ? Factory(lookup) : Factory();
+      var customTransform = lookupPath ? Factory(lookup) : Factory();
+      if (typeof customTransform.errorHook =="function"){
+        console.error("register errorHook");
+        errorHooks.push(customTransform.errorHook.bind(customTransform));
+      }
+      return customTransform;
     });
   };
   var createEsSink = function(host, index) {
@@ -121,6 +127,11 @@ module.exports = function(process) {
         stringify.pipe(process.stdout);
         return stringify;
       }
+    },
+    errorHook: function(error, row, col){
+      errorHooks.forEach(function(hook){
+        hook.call(null,error,row,col);
+      });
     }
   };
 };
