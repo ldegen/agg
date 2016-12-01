@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "aggregator",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Aggregates tabular data to JSON Objects",
   "main": "src/aggregator.js",
   "bin": {
@@ -24,6 +24,7 @@
     "through": "^2.3.7"
   },
   "dependencies": {
+    "coffee-script": "^1.11.1",
     "csv-parse": "^0.1.0",
     "elasticsearch": "^10.0.1",
     "elasticsearch-streams": "0.0.7",
