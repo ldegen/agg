@@ -1,0 +1,6 @@
+aggregator-*.tgz
+spec
+.npmignore
+example.csv
+mark-deps-bundled.js
+report.xml
