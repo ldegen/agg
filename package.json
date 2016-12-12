@@ -8,7 +8,7 @@
     "csv2json": "bin/csv2json.js"
   },
   "scripts": {
-    "prepublish": "node mark-deps-bundled.js",
+    "bigpack": "bigpack",
     "test": "mocha spec src --require spec/helpers/chai.js",
     "test-watch": "mocha -w spec src --require spec/helpers/chai.js -R min",
     "test-jenkins": "JUNIT_REPORT_PATH=report.xml JUNIT_REPORT_STACK=1 mocha spec src --require spec/helpers/chai.js --reporter mocha-jenkins-reporter||true"
@@ -16,6 +16,7 @@
   "author": "Lukas Degener <l.degener@tarent.de>",
   "license": "ISC",
   "devDependencies": {
+    "bigpack": "^0.1.1",
     "chai": "^2.1.2",
     "chai-as-promised": "^5.1.0",
     "concat-stream": "^1.4.8",
@@ -32,14 +33,5 @@
     "minimist": "^1.1.1",
     "stream-combiner": "^0.2.2",
     "yargs": "^3.10.0"
-  },
-  "bundleDependencies": [
-    "coffee-script",
-    "csv-parse",
-    "elasticsearch",
-    "elasticsearch-streams",
-    "minimist",
-    "stream-combiner",
-    "yargs"
-  ]
+  }
 }
