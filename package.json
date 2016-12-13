@@ -16,7 +16,7 @@
   "author": "Lukas Degener <l.degener@tarent.de>",
   "license": "ISC",
   "devDependencies": {
-    "bigpack": "^0.1.3",
+    "bigpack": "^0.1.4",
     "chai": "^2.1.2",
     "chai-as-promised": "^5.1.0",
     "concat-stream": "^1.4.8",
