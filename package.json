@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "aggregator",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Aggregates tabular data to JSON Objects",
   "main": "src/aggregator.js",
   "bin": {
@@ -16,7 +16,7 @@
   "author": "Lukas Degener <l.degener@tarent.de>",
   "license": "ISC",
   "devDependencies": {
-    "bigpack": "^0.1.2",
+    "bigpack": "^0.1.3",
     "chai": "^2.1.2",
     "chai-as-promised": "^5.1.0",
     "concat-stream": "^1.4.8",
