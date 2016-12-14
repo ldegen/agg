@@ -10,7 +10,7 @@ Command Line Interface
 
 Usage:
 ```
-  csv2json [options]
+  agg [options]
 ```
 
 CSV-Data is read from STDIN. JSON documents are written to STDOUT, unless the `-I`

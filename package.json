@@ -1,22 +1,20 @@
 {
-  "private": true,
-  "name": "aggregator",
+  "private": false,
+  "name": "agg",
   "version": "0.1.1",
   "description": "Aggregates tabular data to JSON Objects",
   "main": "src/aggregator.js",
   "bin": {
-    "csv2json": "bin/csv2json.js"
+    "agg": "bin/csv2json.js"
   },
   "scripts": {
-    "bigpack": "bigpack",
     "test": "mocha spec src --require spec/helpers/chai.js",
     "test-watch": "mocha -w spec src --require spec/helpers/chai.js -R min",
     "test-jenkins": "JUNIT_REPORT_PATH=report.xml JUNIT_REPORT_STACK=1 mocha spec src --require spec/helpers/chai.js --reporter mocha-jenkins-reporter||true"
   },
   "author": "Lukas Degener <l.degener@tarent.de>",
-  "license": "ISC",
+  "license": "GPL-2.0",
   "devDependencies": {
-    "bigpack": "^0.1.4",
     "chai": "^2.1.2",
     "chai-as-promised": "^5.1.0",
     "concat-stream": "^1.4.8",
