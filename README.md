@@ -1,77 +1,97 @@
-The Aggregator
-==============
+# The Aggregator
 
-The Aggregator processes tabular data into documents. It does so by *aggregating*
-(hence the name) consecutive rows that represent the different parts of one
-document.
+The Aggregator processes tabular data into documents. It does so by
+*aggregating* (hence the name) consecutive rows that represent the different
+parts of one document.
 
-Command Line Interface
-----------------------
+## Install
+
+The usual `npm install -g agg` should do the trick.
+
+## Command Line Interface
+
+__WARNING__: until the 1.0 release, We will probably change a few things in the
+CLI.  We are trying hard to keep the existing options as they are,
+though.Command Line Interface
 
 Usage:
 ```
   agg [options]
 ```
 
-CSV-Data is read from STDIN. JSON documents are written to STDOUT, unless the `-I`
-option is used, in which case the documents are directly uploaded into
+CSV-Data is read from STDIN. JSON documents are written to STDOUT, unless the
+`-I` option is used, in which case the documents are directly uploaded into
 ElasticSearch.
 
 Valid options are:
 
-  `-k <attr>`  Name of the primary key attribtue to be used with the `-s` and `-I`
-               options. Defaults to `id`.
+### `-k <attr>` 
 
-  `-v <attr>`  Used together with the `-s` option to inline the given
-               "value"-Attribute. I.e. if your mapping would normaly generate
-               documents of the form `{"id": 42,"value": "The value"}`, and
-               you are using the `-s` option, the output will be of the form
-               `{"42": "The value", ... }`
+Name of the primary key attribtue to be used with the `-s` and `-I` options.
+Defaults to `id`.
 
-  `-s`         Reduce output to a single JSON Object, using a designated
-               primary key attribute as key. This defaults to `id`,
-               you can override this by using the `-k` option.
+### `-v <attr>`  
 
-               By default, the structure of your documents will not be changed.
-               In particular, they will include the primary key.
-               See the `-v` option for inlining a single value attribute.
+Used together with the `-s` option to inline the given "value"-Attribute. I.e.
+if your mapping would normaly generate documents of the form `{"id":
+42,"value": "The value"}`, and you are using the `-s` option, the output will
+be of the form `{"42": "The value", ... }`
 
-  `-T <path>`  Apply a custom transformation. The file will be loaded using
-               `require`. It is expected to contain a node.js module that
-               exports a single factory function. This factory is expected to
-               produce something that works like a `stream.Transform`.
-               The output of the aggregation phase will be piped through this
-               transform.
+### `-s`
 
-  `-F <path>`  Same as `-T`, but will be inserted into the pipeline before
-               the aggregation phase. It can be usefull to preprocess/filter the
-               parsed CSV-data.
+Reduce output to a single JSON Object, using a designated primary key attribute
+as key. This defaults to `id`, you can override this by using the `-k` option.
 
-  `-L <path>`  Used in conjunction with `-T` and `-F` to provide the custom transform
-               with arbitrary secondary data, typically a JSON file containing
-               lookup-tables or similar. The file will be loaded using `require`
-               and the result will be passed as an argument to the factory
-               function when creating the custom transform instance.
+By default, the structure of your documents will not be changed.  In
+particular, they will include the primary key.  See the `-v` option for
+inlining a single value attribute.
 
-  `-b`         Create output that can be used as body for an ElasticSearch bulk
-               index request. Without this option, the tool will write
-               one JSON object per document to STDOUT, separated by newlines.
-               *With* this option, however, the documents will be interleaved
-               with command metadata interpreted by the ElasticSearch bulk API.
+### `-T <path>` 
 
-  `-I <index>` If this option is given, documents are not written to STDOUT, but
-               will be uploaded to a local ElasticSearch node using the given
-               name as target index. Implies `-b`.
+Apply a custom transformation. The file will be loaded using `require`. It is
+expected to contain a node.js module that exports a single factory function.
+This factory is expected to produce something that works like a
+`stream.Transform`.  The output of the aggregation phase will be piped through
+this transform.
 
-  `-t <type>`  Used in conjunction with `-I` to specify the document type.
-               Defaults to `project`, for historic reasons.
+### `-F <path>`
 
-  `-h <host>`  Used in conjunction with `-I` to specify the ElasticSearch node
-               to use. Defaults to `http://localhost:9200`.
+Same as `-T`, but will be inserted into the pipeline before the aggregation
+phase. It can be usefull to preprocess/filter the parsed CSV-data.
+
+### `-L <path>`  
+
+Used in conjunction with `-T` and `-F` to provide the custom transform with
+arbitrary secondary data, typically a JSON file containing lookup-tables or
+similar. The file will be loaded using `require` and the result will be passed
+as an argument to the factory function when creating the custom transform
+instance.
+
+### `-b` 
+
+Create output that can be used as body for an ElasticSearch bulk index request.
+Without this option, the tool will write one JSON object per document to
+STDOUT, separated by newlines.  *With* this option, however, the documents will
+be interleaved with command metadata interpreted by the ElasticSearch bulk API.
+
+### `-I <index>` 
+
+If this option is given, documents are not written to STDOUT, but will be
+uploaded to a local ElasticSearch node using the given name as target index.
+Implies `-b`.
+
+### `-t <type>` 
+
+Used in conjunction with `-I` to specify the document type.  Defaults to
+`project`, for historic reasons.
+
+### `-h <host>`  
+
+Used in conjunction with `-I` to specify the ElasticSearch node to use.
+Defaults to `http://localhost:9200`.
 
 
-Mapping Columns to Attributes
------------------------------
+## Mapping Columns to Attributes
 
 Columns in the input are mapped to leaf attributes in the output.
 The mapping is determined by the aggregator by parsing the column label.
@@ -87,11 +107,11 @@ For example this:
 | 3     | Drei    | Három   |
 
 Will produce this:
-
-  {value:1, name:{de: "Eins", hu: "Egy"}}
-  {value:2, name:{de: "Zwei", hu: "Kettő"}}
-  {value:3, name:{de: "Drei", hu: "Három"}}
-
+``` json
+  {"value":1, "name":{"de": "Eins", "hu": "Egy"}}
+  {"value":2, "name":{"de": "Zwei", "hu": "Kettő"}}
+  {"value":3, "name":{"de": "Drei", "hu": "Három"}}
+```
 
 The non-leaf attributes or inner attributes are called document parts.
 Any attribute or part can either be single-valued or multi-valued.
@@ -108,9 +128,11 @@ Here is an example for a multi-valued part:
 |       | hu           | Három          |
 
 This will produce the following output:
-   {value: 1, names: [{lang: "de", string: "Eins"}, {lang: "hu", string: "Egy"}]}
-   {value: 2, names: [{lang: "de", string: "Zwei"}, {lang: "hu", string: "Kettő"}]}
-   {value: 3, names: [{lang: "de", string: "Drei"}, {lang: "hu", string: "Három"}]}
+``` json
+   {"value": 1, "names": [{"lang": "de", "string": "Eins"}, {"lang": "hu", "string": "Egy"}]}
+   {"value": 2, "names": [{"lang": "de", "string": "Zwei"}, {"lang": "hu", "string": "Kettő"}]}
+   {"value": 3, "names": [{"lang": "de", "string": "Drei"}, {"lang": "hu", "string": "Három"}]}
+```
 
 
 Multi-Valued parts are normally represented as JSON arrays. If you want
@@ -119,9 +141,11 @@ pick a single leaf attribute and mark it as key-attribute.
 You can do so by appending a `#` to its name. So in the above example
 we could have used `names[].lang#` to produce:
 
-   {value:1, names:{de: {lang:"de",string:"Eins"}, hu:{lang:"hu",string:"Egy"}}}
-   {value:2, names:{de: {lang:"de",string:"Zwei"}, hu:{lang:"hu",string:"Kettő"}}}
-   {value:3, names:{de: {lang:"de",string:"Drei"}, hu:{lang:"hu",string:"Három"}}}
+``` json
+   {"value":1, "names":{"de": {"lang":"de","string":"Eins"}, "hu":{"lang":"hu","string":"Egy"}}}
+   {"value":2, "names":{"de": {"lang":"de","string":"Zwei"}, "hu":{"lang":"hu","string":"Kettő"}}}
+   {"value":3, "names":{"de": {"lang":"de","string":"Drei"}, "hu":{"lang":"hu","string":"Három"}}}
+```
 
 In this particular case, it seems a bit clumbsy to still include the `lang` and `string`
 keys in our dictionary, when actually we simple want a simple map from language to
@@ -135,9 +159,12 @@ In our example, the header line would look like this:
 
 With the same values as before, the result would look like this:
 
-   {value:1, names:{de: "Eins", hu:"Egy"}}
-   {value:2, names:{de: "Zwei", hu:"Kettő"}}
-   {value:3, names:{de: "Drei", hu:"Három"}}
+
+``` json
+   {"value":1, "names":{"de": "Eins", "hu":"Egy"}}
+   {"value":2, "names":{"de": "Zwei", "hu":"Kettő"}}
+   {"value":3, "names":{"de": "Drei", "hu":"Három"}}
+```
 
 
 Note that the same can be achieved on the document toplevel by using the `-s`, `-k` and `-v`
@@ -167,24 +194,26 @@ contribution by a particular role. So this:
 | 3      | 100 |              |                | 'Deutscher Titel' | 'English Title' |
 
 will produce this:
-
+``` json
   {
-    id:100,
-    persons:[{
-      row:1,
-      id:101,
-      role:'foo'
+    "id":100,
+    "persons":[{
+      "row":1,
+      "id":101,
+      "role":"foo"
     },{
-      row:2,
-      id:102,
-      role:'foo'
+      "row":2,
+      "id":102,
+      "role":"foo"
     }],
-    title:{
-      row:3,
-      de:'Deutscher Titel',
-      en:'English Title'
+    "title":{
+      "row":3,
+      "de":"Deutscher Titel",
+      "en":"English Title"
     }
   }
+
+```
 
 Here, the the root document itself didn't get any `row`-Attribute, because all three
 rows contributed to parts that were nested within the document.
@@ -231,9 +260,9 @@ The third line only contribues to the document root, so this time the wildcard a
 is processed. The resulting document looks like this:
 
   {
-    id:10,
-    wc:3,
-    multi:['a','b']
+    "id":10,
+    "wc":3,
+    "multi":["a","b"]
   }
 
 
