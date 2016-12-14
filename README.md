@@ -80,10 +80,11 @@ attribute for which the values in the respective columns are to be used.
 The path is given as attribute names separated by dots (`.`):
 For example this:
 
-  | value | name.de | name.hu |
-  | 1     | Eins    | Egy     |
-  | 2     | Zwei    | Kettő   |
-  | 3     | Drei    | Három   |
+| value | name.de | name.hu |
+|-------|---------|---------|
+| 1     | Eins    | Egy     |
+| 2     | Zwei    | Kettő   |
+| 3     | Drei    | Három   |
 
 Will produce this:
 
@@ -97,13 +98,14 @@ Any attribute or part can either be single-valued or multi-valued.
 To mark it as multi-valued, append `[]` to its name.
 Here is an example for a multi-valued part:
 
-  | value | names[].lang | names[].string |
-  | 1     | de           | Eins           |
-  |       | hu           | Egy            |
-  | 2     | de           | Zwei           |
-  |       | hu           | Kettő          |
-  | 3     | de           | Drei           |
-  |       | hu           | Három          |
+| value | names[].lang | names[].string |
+|-------|--------------|----------------|
+| 1     | de           | Eins           |
+|       | hu           | Egy            |
+| 2     | de           | Zwei           |
+|       | hu           | Kettő          |
+| 3     | de           | Drei           |
+|       | hu           | Három          |
 
 This will produce the following output:
    {value: 1, names: [{lang: "de", string: "Eins"}, {lang: "hu", string: "Egy"}]}
@@ -128,7 +130,8 @@ entries with one of their attributes. We also call this 'inlining'. To do this,
 just append the name of the attribute you want to inline *after* the `#`.
 In our example, the header line would look like this:
 
-  | value | names[].lang#string | names[].string |
+| value | names[].lang#string | names[].string |
+|-------|---------------------|----------------|
 
 With the same values as before, the result would look like this:
 
@@ -157,10 +160,11 @@ cannot be nested or contain other attributes or parts.
 By default, wildcard attributes are added to the inner-most part(s) that receive any
 contribution by a particular role. So this:
 
-  | \*.row | id+ | persons[].id | persons[].role | title.de          | title.en        |
-  | 1      | 100 | 101          | 'foo'          |                   |                 |
-  | 2      | 100 | 102          | 'foo'          |                   |                 |
-  | 3      | 100 |              |                | 'Deutscher Titel' | 'English Title' |
+| \*.row | id+ | persons[].id | persons[].role | title.de          | title.en        |
+|--------|-----|--------------|----------------|-------------------|-----------------|
+| 1      | 100 | 101          | 'foo'          |                   |                 |
+| 2      | 100 | 102          | 'foo'          |                   |                 |
+| 3      | 100 |              |                | 'Deutscher Titel' | 'English Title' |
 
 will produce this:
 
@@ -188,8 +192,9 @@ rows contributed to parts that were nested within the document.
 Since this is not always desired, a special syntax can be used to explicitly state to which
 document part a contribution actually should go. For example:
 
-  | title.short.de | title.short.en | \*.sn|
-  | Der Titel      | The Title      | 42   |
+| title.short.de | title.short.en | \*.sn|
+|----------------|----------------|------|
+| Der Titel      | The Title      | 42   |
 
 The aggregator would interprete this as a contribution to the part `title.short`.
 This, this part will not only get the attributes `de` and `en`, but also the
@@ -197,8 +202,9 @@ wildcard attribute `sn`.
 
 If we change the labels to read
 
-  | title:short.de | title:short.en | \*.sn|
-  | Der Titel      | The Title      | 42   |
+| title:short.de | title:short.en | \*.sn|
+|----------------|----------------|------|
+| Der Titel      | The Title      | 42   |
 
 The aggregator will read the as a contribution to the part title, and
 put the `sn` there. You could even write `:title.short.de` to make the wildcard attributes
@@ -209,10 +215,11 @@ Note that while adding wildcard attributes to multi-valued *parts* is no problem
 not possible for leaf attributes to receive any wildcards attributes, no matter if they are
 multi-valued or single-valued. Take this example:
 
-      | id+ | \*.wc | multi[] |
-      | 10  | 1     | a       |
-      | 10  | 2     | b       |
-      | 10  | 3     |         |
+| id+ | \*.wc | multi[] |
+|-----|-------|---------|
+| 10  | 1     | a       |
+| 10  | 2     | b       |
+| 10  | 3     |         |
 
 In the first two lines, values are contributed to document root and to the multi-valued
 *leaf* attribute`multi[]`. Since the latter is nested within the former, the
