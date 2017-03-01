@@ -50,6 +50,8 @@ describe("The Command Line Interface (CLI)", function() {
     proc.stdin.push(s);
     proc.stdin.push(null);
   };
+
+
   var output = function() {
     return proc.stdout.promise;
   }
@@ -112,7 +114,26 @@ describe("The Command Line Interface (CLI)", function() {
       return expect(out.promise).to.eventually.eql([42]);
     });
   });
+  describe("when given an input file", function(){
+    it("reads from that file instead of stdin", function(){
+      
+      var file = Path.resolve(__dirname, "mock-input.csv");
+      proc.argv.push(file);
+      return expect(read(Cli(proc).input())).to.eventually.eql([
+        ['bla', 'blub', 'barf'],
+        [4, 2, 42]
+      ]);
+    });
 
+    it("writes JSON data to STDOUT", function() {
+      var cliout = Cli(proc).output();
+      cliout.write({
+        foo: "bar"
+      });
+
+
+    });
+  });
   describe("in ES-Bulk mode", function() {
     it("produces output in ES-Bulk-Index format", function() {
       proc.argv.push('-b');

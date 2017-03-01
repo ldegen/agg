@@ -5,6 +5,7 @@ var EsClient = require('elasticsearch').Client;
 var Parse = require('csv-parse');
 var Transform = require('stream').Transform;
 var combine = require('stream-combiner');
+var fs = require("fs");
 module.exports = function(process) {
   var argv = require('minimist')(process.argv.slice(2));
   var errorHooks = [];
@@ -104,6 +105,9 @@ module.exports = function(process) {
   };
   return {
     input: function() {
+      if(argv._.length>0){
+        return fs.createReadStream(argv._[0]).pipe(parse).pipe(parseValues);
+      }
       return process.stdin.pipe(parse).pipe(parseValues);
     },
     preprocessor: function() {

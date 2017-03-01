@@ -12,14 +12,14 @@ The usual `npm install -g agg` should do the trick.
 
 __WARNING__: until the 1.0 release, We will probably change a few things in the
 CLI.  We are trying hard to keep the existing options as they are,
-though.Command Line Interface
+though.
 
 Usage:
 ```
-  agg [options]
+  agg [options] [csv file]
 ```
 
-CSV-Data is read from STDIN. JSON documents are written to STDOUT, unless the
+If no `csv file` is given, CSV-Data is read from STDIN.  JSON documents are written to STDOUT, unless the
 `-I` option is used, in which case the documents are directly uploaded into
 ElasticSearch.
 
