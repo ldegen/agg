@@ -1,7 +1,7 @@
 {
   "private": false,
   "name": "agg",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Aggregates tabular data to JSON Objects",
   "main": "src/aggregator.js",
   "bin": {
