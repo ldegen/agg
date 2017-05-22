@@ -338,6 +338,19 @@ var Processor = function(push,errorHook) {
     }
   };
 
+
+  var compareBy = function(props){
+    return function(a,b){
+      for(var i=0;i<props.length;i++){
+        var prop = props[i];
+        if(a[prop]!==b[prop]){
+          return a[prop]-b[prop];
+        }
+      }
+      return 0;
+    };
+  };
+
   var processHeaderRow = function(headerCells) {
     columnTypes = headerCells.map(processHeaderCell);
 
@@ -345,20 +358,19 @@ var Processor = function(push,errorHook) {
     // - concrete comes before wildcard
     // - short paths come before long paths
     // - single-valued come before multi-valued
+    // - unique comes before non-unique
 
     columnOrder = columnTypes.map(function(colType, colPos) {
       return {
-        k: 2 * colType.depth + (colType.multiValued ? 1 : 0),
-        wc: colType.wildcard ? 1 : 0,
+        wildcard: colType.wildcard ? 1 : 0,
+        depth: colType.depth, 
+        multi: (colType.multiValued ? 1 : 0),
+        non_unique: colType.unique ? 0 : 1,
         i: colPos
       };
-    }).sort(function(a, b) {
-      var wc = a.wc - b.wc;
-      if (wc !== 0) {
-        return wc;
-      }
-      return a.k - b.k;
-    }).map(function(ki) {
+    })
+    .sort(compareBy(["wildcard","depth","multi","non_unique"]))
+    .map(function(ki) {
       return ki.i;
     });
     detectAmbiguities();

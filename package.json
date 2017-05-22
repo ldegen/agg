@@ -8,6 +8,7 @@
     "agg": "bin/csv2json.js"
   },
   "scripts": {
+    "debug": "node-debug bin/csv2json.js",
     "test": "mocha spec src --require spec/helpers/chai.js",
     "test-watch": "mocha -w spec src --require spec/helpers/chai.js -R min",
     "test-jenkins": "JUNIT_REPORT_PATH=report.xml JUNIT_REPORT_STACK=1 mocha spec src --require spec/helpers/chai.js --reporter mocha-jenkins-reporter||true"
@@ -20,6 +21,7 @@
     "concat-stream": "^1.4.8",
     "mocha": "^2.2.1",
     "mocha-jenkins-reporter": "^0.1.6",
+    "node-inspector": "^1.1.1",
     "promise": "^7.0.1",
     "through": "^2.3.7"
   },
