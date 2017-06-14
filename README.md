@@ -78,6 +78,14 @@ If this option is given, documents are not written to STDOUT, but will be
 uploaded to a local ElasticSearch node using the given name as target index.
 Implies `-b`.
 
+### `-S <fixed pk>, --S=<fixed pk>`
+
+When you want to aggregate all data into a single document but still want to
+index this document using some apriori known primary key, use this option.
+
+It behaves like `-b -s` but allows you to specify a primary key for the
+document.
+
 ### `-t <type>`
 
 Used in conjunction with `-I` to specify the document type. Defaults to
@@ -151,8 +159,8 @@ replace the dictionary entries with one of their attributes. We also call this
 'inlining'. To do this, just append the name of the attribute you want to
 inline *after* the `#`. In our example, the header line would look like this:
 
-  value   names\[\].lang\#string   names\[\].string
-  ------- ------------------------ ------------------
+value names\[\].lang\#string names\[\].string ------- ------------------------
+------------------
 
 With the same values as before, the result would look like this:
 

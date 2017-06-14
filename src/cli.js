@@ -17,8 +17,9 @@ module.exports = function(process) {
     transformPath: argv.T,
     lookupPath: argv.L,
     filterPath: argv.F,
-    createEsBulk: argv.b || !!argv.I,
-    singleObject: argv.s,
+    createEsBulk: argv.b || !!argv.I || !!argv.S,
+    singleObject: argv.s || !!argv.S,
+    fixedDocumentId: argv.S,
     esType: argv.t || 'project',
     esIndex: argv.I,
     esHost: argv.h || 'http://localhost:9200'
@@ -27,7 +28,7 @@ module.exports = function(process) {
   var meta = function(doc) {
     return {
       _type: doc[settings.typeAttr] || settings.esType,
-      _id: doc[settings.idAttr]
+      _id: settings.fixedDocumentId || doc[settings.idAttr]
     };
   };
 

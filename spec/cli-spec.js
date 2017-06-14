@@ -165,6 +165,39 @@ describe("The Command Line Interface (CLI)", function() {
       //Testing this is probably not worth the trouble?
     });
   });
+  describe("in Single Document ES-Bulk mode", function(){
+    it("behaves like -b -s, but allows using a fixed document pk ", function(){
+      proc.argv.push("--S=-42" /*implies "-b"*/);
+      var ps = Cli(proc).postprocessor();
+      var out = ps.pipe(new Output({
+        objectMode: true
+      }));
+      ps.write({
+        id: 1,
+        foo: "bar"
+      });
+      ps.write({
+        id: 2,
+        foo: "knarz"
+      });
+      ps.end();
+      return expect(out.promise).to.eventually.eql([{
+        index: {
+          _type: 'project',
+          _id: -42
+        }
+      }, {
+       "1": {
+          id: 1,
+          foo: "bar"
+        },
+        "2": {
+          id: 2,
+          foo: "knarz"
+        }
+      }]);
+    });
+  });
 
   describe("in single-object mode", function() {
     it("reduces output to a single object", function() {
@@ -241,6 +274,7 @@ describe("The Command Line Interface (CLI)", function() {
       }]);
     });
   });
+
   describe("custom transformations", function() {
 
     var PATH_TO_A = Path.resolve(__dirname, "mock-transform-a.js");
