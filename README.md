@@ -159,8 +159,9 @@ replace the dictionary entries with one of their attributes. We also call this
 'inlining'. To do this, just append the name of the attribute you want to
 inline *after* the `#`. In our example, the header line would look like this:
 
-value names\[\].lang\#string names\[\].string ------- ------------------------
-------------------
+| value | names\[\].lang\#string | names\[\].string |
+|-------|------------------------|------------------|
+|       |                        |                  |
 
 With the same values as before, the result would look like this:
 
