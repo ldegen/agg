@@ -28,7 +28,7 @@
   "dependencies": {
     "coffee-script": "^1.11.1",
     "csv-parse": "^0.1.0",
-    "elasticsearch": "^10.0.1",
+    "elasticsearch": "^14.0.0",
     "elasticsearch-streams": "0.0.7",
     "minimist": "^1.1.1",
     "stream-combiner": "^0.2.2",
