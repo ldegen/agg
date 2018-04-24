@@ -22,7 +22,9 @@ module.exports = function(process) {
     fixedDocumentId: argv.S,
     esType: argv.t || 'project',
     esIndex: argv.I,
-    esHost: argv.h || 'http://localhost:9200'
+    esHost: argv.h || 'http://localhost:9200',
+    esBulkTimeout: argv["es-bulk-timeout"] || 120000,
+    esBulkChunkSize: argv["es-bulk-chunk-size"] || 128
   };
 
   var meta = function(doc) {
@@ -90,7 +92,8 @@ module.exports = function(process) {
   var createEsSink = function(host, index) {
     var client = new EsClient({
       host: host,
-      keepAlive: false //wouldn't make sense in our case
+      keepAlive: false, //wouldn't make sense in our case
+      requestTimeout: settings.esBulkTimeout
     });
     var bulkExec = function(bulkCmds, callback) {
       client.bulk({
@@ -98,7 +101,7 @@ module.exports = function(process) {
         body: bulkCmds
       }, callback);
     };
-    var ws = new WritableBulk(bulkExec);
+    var ws = new WritableBulk(bulkExec, settings.esBulkChunkSize /* high-water-mark a.k.a. chunk size. */);
     ws.on('close', function() {
       client.close();
     });
