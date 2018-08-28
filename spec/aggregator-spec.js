@@ -159,6 +159,47 @@ describe("the aggregator", function(){
      ]);
   });
 
+  describe("conflicting requirements in border case", function(){
+
+    xit("starts a new part if the value of a unique attribute changes from null to non-null", function(){
+      var table = [
+        [ "value+"  , "names[]" ],
+        [ null      , "Nichts"  ],
+        [ null      , "Semmi"   ],
+        [ 0         , "Null"    ],
+        [ null      , "Zéró"    ],
+        [ 1         , "Eins"    ],
+        [ null      , "Egy"     ],
+      ];
+
+      var docs = transform(table);
+      console.log("docs", JSON.stringify(docs));
+
+      expect(docs).to.eql([
+        {          names: ["Nichts", "Semmi"]},
+        {value: 0, names: ["Null","Zéró"]},
+        {value: 1, names: ["Eins", "Egy"]}
+      ]);
+    });
+
+    it("does not require the value of a unique attribute to be passed in the first row of a part", function(){
+      var table = [
+        [ "value+"  , "names[]" ],
+        [ null      , "Null"    ],
+        [ 0         , "Zéró"    ],
+        [ 1         , "Eins"    ],
+        [ null      , "Egy"     ],
+      ];
+
+      var docs = transform(table);
+
+      expect(docs).to.eql([
+        {value: 0, names: ["Null","Zéró"]},
+        {value: 1, names: ["Eins", "Egy"]}
+      ]);
+    });
+  });
+
   it("raises an exception if the column mapping is ambiguous", function(){
     var table = [
       [ "tablename" , "rows[].columns[]"] ,
