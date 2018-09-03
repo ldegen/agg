@@ -22,7 +22,7 @@ module.exports = function(process) {
     fixedDocumentId: argv.S,
     esType: argv.t || 'project',
     esIndex: argv.I,
-    esHost: argv.h || 'http://localhost:9200',
+    esHost: argv.h || process.env.ES_URL || 'http://localhost:9200',
     esBulkTimeout: argv["es-bulk-timeout"] || 120000,
     esBulkChunkSize: argv["es-bulk-chunk-size"] || 128
   };

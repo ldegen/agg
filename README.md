@@ -94,7 +94,8 @@ Used in conjunction with `-I` to specify the document type. Defaults to
 ### `-h <host>`
 
 Used in conjunction with `-I` to specify the ElasticSearch node to use.
-Defaults to `http://localhost:9200`.
+If ommited, the content of the environment variable `ES_URL` will be used.
+If the variable is not set, the URL `http://localhost:9200` is used as default.
 
 ## Mapping Columns to Attributes
 
