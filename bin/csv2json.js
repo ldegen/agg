@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-require("coffee-script/register");
+require("coffeescript/register");
 var Aggregate = require('../src/aggregator');
 var Cli = require('../src/cli');
 var cli = Cli(process);

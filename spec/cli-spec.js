@@ -10,7 +10,7 @@ describe("The Command Line Interface (CLI)", function() {
 
   var Output = function(opts0) {
     var opts = opts0 || {};
-    var buf = opts.objectMode ? [] : new Buffer([]);
+    var buf = opts.objectMode ? [] : Buffer.from([]);
     var output = new Writable(opts);
     output._write = function(chunk, enc, next) {
       if (chunk) {

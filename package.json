@@ -18,17 +18,16 @@
   "devDependencies": {
     "chai": "^2.1.2",
     "chai-as-promised": "^5.1.0",
-    "concat-stream": "^1.4.8",
-    "mocha": "^2.2.1",
+    "concat-stream": "^1.6.2",
+    "mocha": "^5.2.0",
     "mocha-jenkins-reporter": "^0.1.6",
-    "node-inspector": "^1.1.1",
-    "promise": "^7.0.1",
+    "promise": "^7.3.1",
     "through": "^2.3.7"
   },
   "dependencies": {
-    "coffee-script": "^1.11.1",
+    "coffeescript": "^2.3.2",
     "csv-parse": "^0.1.0",
-    "elasticsearch": "^14.0.0",
+    "elasticsearch": "^15.2.0",
     "elasticsearch-streams": "0.0.7",
     "minimist": "^1.1.1",
     "stream-combiner": "^0.2.2",
