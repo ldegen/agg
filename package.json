@@ -26,9 +26,9 @@
   },
   "dependencies": {
     "coffeescript": "^2.3.2",
-    "csv-parse": "^0.1.0",
-    "elasticsearch": "^15.2.0",
-    "elasticsearch-streams": "0.0.7",
+    "csv-parse": "^4.4.3",
+    "elasticsearch": "^16.3.0",
+    "elasticsearch-streams": "0.0.10",
     "minimist": "^1.1.1",
     "stream-combiner": "^0.2.2",
     "yargs": "^3.10.0"
