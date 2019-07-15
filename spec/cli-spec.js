@@ -275,6 +275,35 @@ describe("The Command Line Interface (CLI)", function() {
     });
   });
 
+  describe("input format", function() {
+
+    it("allows configuring alternative delimiter chars", function() {
+      proc.argv.push('-D',';');
+      input("a;b;c\n1;2;3\n");
+      return expect(read(Cli(proc).input())).to.eventually.eql([
+        ['a', 'b', 'c'],
+        [1, 2, 3]
+      ]);
+    });
+
+    it("allows configuring alternative record delimiter chars", function() {
+      proc.argv.push('-R','---');
+      input("a,b,c---1,2,3---");
+      return expect(read(Cli(proc).input())).to.eventually.eql([
+        ['a', 'b', 'c'],
+        [1, 2, 3]
+      ]);
+    });
+
+    it("can work with different character encodings", function(){
+      proc.argv.push('-E','latin1');
+      input(Buffer.from("ä,b,c\n1,2,3\n",'latin1'));
+      return expect(read(Cli(proc).input())).to.eventually.eql([
+        ['ä', 'b', 'c'],
+        [1, 2, 3]
+      ]);
+    })
+  });
   describe("custom transformations", function() {
 
     var PATH_TO_A = Path.resolve(__dirname, "mock-transform-a.js");

@@ -23,6 +23,24 @@ are directly uploaded into ElasticSearch.
 
 Valid options are:
 
+### `-e <encoding>`
+
+Character set to assume when parsing the input data.
+
+### `-D <delimiter char>`
+
+The character used to delimit fields in the input. While the RFC4180 makes it
+very clear that the 'C' in 'CSV' stands for 'Comma', there are software
+companies who think otherwise.  If for whatever pathetic reason you have to work
+with Microsoft products, this one is for you.
+
+
+### `-R <record delimiter>`
+
+A sequence of one or more characters that serve as record delimiter in the input.
+It is usually save to leave this at its default. The parser will try to guess the
+correct line separator.
+
 ### `-k <attr>`
 
 Name of the primary key attribtue to be used with the `-s` and `-I` options.

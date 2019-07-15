@@ -24,7 +24,10 @@ module.exports = function(process) {
     esIndex: argv.I,
     esHost: argv.h || (process.env || {}).ES_URL || 'http://localhost:9200',
     esBulkTimeout: argv["es-bulk-timeout"] || 120000,
-    esBulkChunkSize: argv["es-bulk-chunk-size"] || 128
+    esBulkChunkSize: argv["es-bulk-chunk-size"] || 128,
+    csvDelimiter: argv.D, /* no default, the parser should fall back to comma. I think. */
+    csvEncoding: argv.E, /* no default, should use platform default */
+    csvRecordDelimiter: argv.R, /* none by default --> auto detect */
   };
 
   var meta = function(doc) {
@@ -37,7 +40,9 @@ module.exports = function(process) {
   var toBulk = new TransformToBulk(meta);
 
   var parse = Parse({
-    auto_parse: false
+    auto_parse: false,
+    delimiter: settings.csvDelimiter,
+    record_delimiter: settings.csvRecordDelimiter
   });
   var parseValues = new Transform({
     objectMode: true
@@ -109,10 +114,26 @@ module.exports = function(process) {
   };
   return {
     input: function() {
+      var stream;
       if(argv._.length>0){
-        return fs.createReadStream(argv._[0]).pipe(parse).pipe(parseValues);
+        stream= fs.createReadStream(argv._[0]);
+      } else {
+        stream = process.stdin; 
       }
-      return process.stdin.pipe(parse).pipe(parseValues);
+      if(settings.csvEncoding){
+        //FIXME: for some reason, this does not work?
+        //stream.setEncoding(settings.csvEncoding);
+        //
+        //So we go the long way:
+        tf = new Transform({
+          transform: function(chunk, enc, done){
+            this.push(chunk.toString(settings.csvEncoding));
+            done();
+          }
+        });
+        stream = stream.pipe(tf);
+      }
+      return stream.pipe(parse).pipe(parseValues);
     },
     preprocessor: function() {
       var ps = settings.filterPath ? loadCustomTransorms(settings.filterPath, settings.lookupPath) : [];
